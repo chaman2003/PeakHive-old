@@ -3,7 +3,6 @@
 
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
-import mongoose from 'mongoose';
 
 // @desc    Register a new user
 // @route   POST /api/users
@@ -305,48 +304,47 @@ const deleteUser = async (req, res) => {
     const Order = (await import('../models/Order.js')).default;
     const Payment = (await import('../models/Payment.js')).default;
     
-    // Delete all associated data in a transaction to ensure consistency
-    const session = await mongoose.startSession();
-    session.startTransaction();
+    console.log(`Starting deletion process for user ${user._id}`);
     
     try {
       // Delete user's cart
-      await Cart.deleteMany({ user: user._id }, { session });
+      const cartResult = await Cart.deleteMany({ user: user._id });
+      console.log(`Deleted ${cartResult.deletedCount} cart items`);
       
       // Delete user's wishlist
-      await Wishlist.deleteMany({ userId: user._id }, { session });
+      const wishlistResult = await Wishlist.deleteMany({ userId: user._id });
+      console.log(`Deleted ${wishlistResult.deletedCount} wishlist items`);
       
       // Delete user's reviews
-      await Review.deleteMany({ user: user._id }, { session });
+      const reviewResult = await Review.deleteMany({ user: user._id });
+      console.log(`Deleted ${reviewResult.deletedCount} reviews`);
       
       // Find all orders by this user
-      const userOrders = await Order.find({ user: user._id }, { session });
+      const userOrders = await Order.find({ user: user._id });
+      console.log(`Found ${userOrders.length} orders`);
       
       // Delete payment records associated with user's orders
       for (const order of userOrders) {
-        await Payment.deleteMany({ orderId: order._id }, { session });
+        const paymentResult = await Payment.deleteMany({ orderId: order._id });
+        console.log(`Deleted ${paymentResult.deletedCount} payments for order ${order._id}`);
       }
       
       // Delete all user's orders
-      await Order.deleteMany({ user: user._id }, { session });
+      const orderResult = await Order.deleteMany({ user: user._id });
+      console.log(`Deleted ${orderResult.deletedCount} orders`);
       
       // Finally delete the user
-      await User.findByIdAndDelete(user._id, { session });
-      
-      // Commit the transaction
-      await session.commitTransaction();
-      session.endSession();
+      await User.findByIdAndDelete(user._id);
+      console.log(`User ${user._id} deleted successfully`);
       
       res.json({ message: 'User and all associated data removed successfully' });
     } catch (error) {
-      // If any operation fails, abort the transaction
-      await session.abortTransaction();
-      session.endSession();
+      console.error('Error in deletion sequence:', error);
       throw error; // Rethrow for the outer catch block
     }
   } catch (error) {
     console.error('Error deleting user:', error);
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ message: 'Server Error', error: error.message, stack: error.stack });
   }
 };
 
