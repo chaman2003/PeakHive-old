@@ -1,4 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+// eslint-disable-next-line no-unused-vars
+import { motion } from 'framer-motion';
+import AnimatedSection from '../components/ui/AnimatedSection';
+import { fadeInUp, fadeInLeft, fadeInRight, staggerContainer } from '../utils/animationVariants';
 
 function About() {
   const teamMembers = [
@@ -30,141 +35,193 @@ function About() {
   
   return (
     <>
-      {/* Hero Section */}
-      <section className="bg-primary text-white py-5">
-        <div className="container-fluid px-4 px-md-5">
+      {/* Hero Section - Compact */}
+      <section className="bg-primary text-white py-4">
+        <div className="container">
           <div className="row align-items-center">
-            <div className="col-lg-6 py-4">
-              <h1 className="display-4 fw-bold mb-4">Our Story</h1>
-              <p className="lead mb-0">Founded in 2018, PeakHive has grown from a small startup to a trusted destination for technology enthusiasts across the country.</p>
-            </div>
-            <div className="col-lg-6">
+            <motion.div 
+              initial="hidden"
+              animate="visible"
+              variants={fadeInLeft}
+              transition={{ duration: 0.5 }}
+              className="col-lg-7 py-3"
+            >
+              <h1 className="display-5 fw-bold mb-3">Our Story</h1>
+              <p className="lead mb-0">Founded in 2018, PeakHive has grown from a small startup to a trusted destination for technology enthusiasts.</p>
+            </motion.div>
+            <motion.div 
+              initial="hidden"
+              animate="visible"
+              variants={fadeInRight}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="col-lg-5"
+            >
               <img 
                 src="https://images.unsplash.com/photo-1552581234-26160f608093?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1170&q=80" 
                 alt="Team meeting" 
                 className="img-fluid rounded shadow-lg"
+                style={{maxHeight: "250px", objectFit: "cover"}}
               />
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
       
-      {/* Mission */}
-      <section className="py-5">
+      {/* Mission - Condensed */}
+      <AnimatedSection className="py-4" delay={0.3}>
         <div className="container">
           <div className="row justify-content-center">
             <div className="col-lg-8 text-center">
-              <h2 className="fw-bold mb-4">Our Mission</h2>
-              <p className="lead mb-5">At PeakHive, we believe that premium technology should be accessible to everyone. Our mission is to curate high-quality tech products and deliver them to your doorstep with exceptional service and competitive pricing.</p>
+              <h2 className="fw-bold mb-3 fs-3">Our Mission</h2>
+              <p className="mb-4">At PeakHive, we believe that premium technology should be accessible to everyone. We curate high-quality tech products and deliver them with exceptional service and competitive pricing.</p>
               
-              <div className="row g-4 mt-3">
-                <div className="col-md-4">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body text-center p-4">
-                      <div className="display-5 text-primary mb-3">
+              <motion.div 
+                variants={staggerContainer}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                className="row g-3 mt-2"
+              >
+                <motion.div variants={fadeInUp} className="col-md-4">
+                  <motion.div 
+                    className="card border-0 shadow-sm h-100"
+                    whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                  >
+                    <div className="card-body text-center p-3">
+                      <div className="fs-3 text-primary mb-2">
                         <i className="bi bi-award"></i>
                       </div>
-                      <h5 className="fw-bold">Quality First</h5>
-                      <p className="mb-0">We carefully select each product in our catalog to ensure the highest quality standards.</p>
+                      <h5 className="fw-bold fs-6">Quality First</h5>
+                      <p className="mb-0 small">We carefully select each product to ensure the highest quality standards.</p>
                     </div>
-                  </div>
-                </div>
-                <div className="col-md-4">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body text-center p-4">
-                      <div className="display-5 text-primary mb-3">
+                  </motion.div>
+                </motion.div>
+                <motion.div variants={fadeInUp} className="col-md-4">
+                  <motion.div 
+                    className="card border-0 shadow-sm h-100"
+                    whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                  >
+                    <div className="card-body text-center p-3">
+                      <div className="fs-3 text-primary mb-2">
                         <i className="bi bi-currency-dollar"></i>
                       </div>
-                      <h5 className="fw-bold">Fair Pricing</h5>
-                      <p className="mb-0">We work directly with manufacturers to offer competitive prices without compromising quality.</p>
+                      <h5 className="fw-bold fs-6">Fair Pricing</h5>
+                      <p className="mb-0 small">We work directly with manufacturers to offer competitive prices.</p>
                     </div>
-                  </div>
-                </div>
-                <div className="col-md-4">
-                  <div className="card border-0 shadow-sm h-100">
-                    <div className="card-body text-center p-4">
-                      <div className="display-5 text-primary mb-3">
+                  </motion.div>
+                </motion.div>
+                <motion.div variants={fadeInUp} className="col-md-4">
+                  <motion.div 
+                    className="card border-0 shadow-sm h-100"
+                    whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                  >
+                    <div className="card-body text-center p-3">
+                      <div className="fs-3 text-primary mb-2">
                         <i className="bi bi-headset"></i>
                       </div>
-                      <h5 className="fw-bold">Customer Focus</h5>
-                      <p className="mb-0">We're committed to providing exceptional customer service and support.</p>
+                      <h5 className="fw-bold fs-6">Customer Focus</h5>
+                      <p className="mb-0 small">We're committed to providing exceptional customer service and support.</p>
                     </div>
-                  </div>
-                </div>
-              </div>
+                  </motion.div>
+                </motion.div>
+              </motion.div>
             </div>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
       
-      {/* Team */}
-      <section className="py-5 bg-light">
+      {/* Team - Optimized */}
+      <AnimatedSection className="py-4 bg-light" delay={0.4}>
         <div className="container">
-          <h2 className="fw-bold text-center mb-5">Meet Our Team</h2>
+          <h2 className="fw-bold text-center mb-4 fs-3">Meet Our Team</h2>
           
-          <div className="row g-4">
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="row g-3"
+          >
             {teamMembers.map((member, index) => (
-              <div key={index} className="col-md-6 col-lg-3">
-                <div className="card border-0 shadow-sm h-100">
+              <motion.div 
+                key={index} 
+                variants={fadeInUp} 
+                className="col-sm-6 col-lg-3"
+              >
+                <motion.div 
+                  className="card border-0 shadow-sm h-100"
+                  whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                >
                   <img 
                     src={member.image} 
                     className="card-img-top" 
                     alt={member.name}
-                    style={{ height: '250px', objectFit: 'cover' }}
+                    style={{ height: '180px', objectFit: 'cover' }}
                   />
-                  <div className="card-body">
-                    <h5 className="fw-bold mb-1">{member.name}</h5>
-                    <p className="text-primary mb-3">{member.position}</p>
-                    <p className="card-text">{member.bio}</p>
+                  <div className="card-body p-3">
+                    <h5 className="fw-bold mb-1 fs-6">{member.name}</h5>
+                    <p className="text-primary mb-2 small">{member.position}</p>
+                    <p className="card-text small">{member.bio}</p>
                   </div>
-                  <div className="card-footer bg-white border-0 d-flex justify-content-center gap-3">
-                    <a href="#" className="text-muted fs-5"><i className="bi bi-linkedin"></i></a>
-                    <a href="#" className="text-muted fs-5"><i className="bi bi-twitter"></i></a>
-                    <a href="#" className="text-muted fs-5"><i className="bi bi-envelope"></i></a>
+                  <div className="card-footer bg-white border-0 py-2 d-flex justify-content-center gap-3">
+                    <a href="#" className="text-muted"><i className="bi bi-linkedin"></i></a>
+                    <a href="#" className="text-muted"><i className="bi bi-twitter"></i></a>
+                    <a href="#" className="text-muted"><i className="bi bi-envelope"></i></a>
                   </div>
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </AnimatedSection>
       
-      {/* Stats */}
-      <section className="py-5">
+      {/* Stats - Compact */}
+      <AnimatedSection className="py-4" delay={0.5}>
         <div className="container">
-          <div className="row g-4 text-center">
-            <div className="col-md-3">
-              <div className="display-3 fw-bold text-primary mb-2">5+</div>
-              <p className="lead">Years in Business</p>
-            </div>
-            <div className="col-md-3">
-              <div className="display-3 fw-bold text-primary mb-2">25k+</div>
-              <p className="lead">Happy Customers</p>
-            </div>
-            <div className="col-md-3">
-              <div className="display-3 fw-bold text-primary mb-2">500+</div>
-              <p className="lead">Products</p>
-            </div>
-            <div className="col-md-3">
-              <div className="display-3 fw-bold text-primary mb-2">48</div>
-              <p className="lead">States Served</p>
-            </div>
-          </div>
+          <motion.div 
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="row g-3 text-center"
+          >
+            <motion.div variants={fadeInUp} className="col-6 col-md-3">
+              <div className="fs-2 fw-bold text-primary mb-1">5+</div>
+              <p className="mb-0">Years in Business</p>
+            </motion.div>
+            <motion.div variants={fadeInUp} className="col-6 col-md-3">
+              <div className="fs-2 fw-bold text-primary mb-1">25k+</div>
+              <p className="mb-0">Happy Customers</p>
+            </motion.div>
+            <motion.div variants={fadeInUp} className="col-6 col-md-3">
+              <div className="fs-2 fw-bold text-primary mb-1">500+</div>
+              <p className="mb-0">Products</p>
+            </motion.div>
+            <motion.div variants={fadeInUp} className="col-6 col-md-3">
+              <div className="fs-2 fw-bold text-primary mb-1">48</div>
+              <p className="mb-0">States Served</p>
+            </motion.div>
+          </motion.div>
         </div>
-      </section>
+      </AnimatedSection>
       
-      {/* Call to Action */}
-      <section className="py-5 bg-dark text-white text-center">
+      {/* Call to Action - Streamlined */}
+      <AnimatedSection className="py-4 bg-dark text-white text-center" delay={0.6}>
         <div className="container">
           <div className="row justify-content-center">
-            <div className="col-lg-8">
-              <h2 className="fw-bold mb-3">Ready to experience PeakHive?</h2>
-              <p className="lead mb-4">Browse our catalog of premium tech products and find your perfect match.</p>
-              <a href="/products" className="btn btn-primary btn-lg px-4 py-2">Shop Now</a>
+            <div className="col-lg-6">
+              <h2 className="fw-bold mb-2 fs-4">Ready to experience PeakHive?</h2>
+              <p className="mb-3">Find your perfect tech products today.</p>
+              <motion.div
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Link to="/products" className="btn btn-primary px-4 py-2">Shop Now</Link>
+              </motion.div>
             </div>
           </div>
         </div>
-      </section>
+      </AnimatedSection>
     </>
   );
 }

@@ -1,29 +1,105 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { removeFromCart, updateCartQuantity, syncCartWithDatabase, applyCouponCode, clearCouponCode } from '../slices/cartSlice';
+import { createSelector } from '@reduxjs/toolkit';
+import { toast } from 'react-toastify';
+
+// Create memoized selectors
+const selectCartItems = createSelector(
+  [(state) => state.cart.cartItems, 
+   (state) => state.cart.couponCode, 
+   (state) => state.cart.discount,
+   (state) => state.cart.shipping],
+  (cartItems, couponCode, discount, shipping) => ({ 
+    cartItems, 
+    couponCode, 
+    discount,
+    shipping 
+  })
+);
+
+const selectUserInfo = createSelector(
+  [(state) => state.user.userInfo],
+  (userInfo) => ({ userInfo })
+);
 
 function Cart() {
-  // Mock cart data
-  const cartItems = [
-    {
-      id: 3,
-      name: 'Ultra Slim Laptop',
-      price: 1299.99,
-      image: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1171&q=80',
-      quantity: 1
-    },
-    {
-      id: 1,
-      name: 'Premium Headphones',
-      price: 199.99,
-      image: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1165&q=80',
-      quantity: 2
-    }
-  ];
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
   
-  // Calculate subtotal
-  const subtotal = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-  const shipping = subtotal > 100 ? 0 : 10;
-  const tax = subtotal * 0.08;
-  const total = subtotal + shipping + tax;
+  // State for coupon input
+  const [couponInput, setCouponInput] = useState('');
+  
+  // Get cart items from Redux store using memoized selectors
+  const { cartItems = [], couponCode = '', discount = 0, shipping = 0 } = useSelector(selectCartItems);
+  const { userInfo } = useSelector(selectUserInfo);
+  
+  // Calculate subtotal with safety checks
+  const subtotal = Array.isArray(cartItems) 
+    ? cartItems.reduce((total, item) => total + (Number(item.price || 0) * Number(item.quantity || 0)), 0) 
+    : 0;
+  const discountAmount = discount ? subtotal * Number(discount) : 0;
+  const safeShipping = Number(shipping || 0);
+  const tax = (subtotal - discountAmount) * 0.08;
+  const total = subtotal - discountAmount + safeShipping + tax;
+  
+  // Add useEffect to sync cart after any changes
+  useEffect(() => {
+    if (userInfo && cartItems.length > 0) {
+      dispatch(syncCartWithDatabase());
+    }
+  }, [dispatch, userInfo, cartItems]);
+  
+  // Initialize coupon input from Redux state
+  useEffect(() => {
+    if (couponCode) {
+      setCouponInput(couponCode);
+    }
+  }, [couponCode]);
+  
+  const handleRemoveFromCart = (productId) => {
+    dispatch(removeFromCart(productId));
+    // syncCartWithDatabase will be called by the useEffect
+  };
+  
+  const handleUpdateQuantity = (productId, quantity) => {
+    dispatch(updateCartQuantity({ productId, quantity }));
+    // syncCartWithDatabase will be called by the useEffect
+  };
+  
+  const handleApplyCoupon = () => {
+    if (!couponInput) {
+      toast.error('Please enter a coupon code');
+      return;
+    }
+    
+    if (couponInput === 'discount50') {
+      dispatch(applyCouponCode(couponInput));
+      toast.success('Coupon applied successfully! 50% discount added.');
+    } else {
+      toast.error('Invalid coupon code');
+      dispatch(clearCouponCode());
+    }
+  };
+  
+  const handleRemoveCoupon = () => {
+    dispatch(clearCouponCode());
+    setCouponInput('');
+    toast.info('Coupon removed');
+  };
+  
+  const handleCheckout = () => {
+    if (!userInfo) {
+      navigate('/login?redirect=checkout');
+    } else {
+      navigate('/checkout');
+    }
+  };
+  
+  const handleContinueShopping = () => {
+    navigate('/products');
+  };
   
   return (
     <>
@@ -37,7 +113,7 @@ function Cart() {
                 <div className="card border-0 shadow-sm">
                   <div className="card-body">
                     {cartItems.map((item) => (
-                      <div key={item.id} className="row align-items-center mb-4 pb-3 border-bottom">
+                      <div key={item.productId} className="row align-items-center mb-4 pb-3 border-bottom">
                         <div className="col-md-2">
                           <img 
                             src={item.image} 
@@ -47,20 +123,34 @@ function Cart() {
                         </div>
                         <div className="col-md-5">
                           <h5 className="mb-1">{item.name}</h5>
-                          <p className="text-muted mb-0">SKU: TECH-{item.id}000{item.id}</p>
+                          <p className="text-muted mb-0">SKU: TECH-{item.productId}</p>
                         </div>
                         <div className="col-md-2">
                           <div className="input-group input-group-sm">
-                            <button className="btn btn-outline-secondary">-</button>
-                            <input type="text" className="form-control text-center" value={item.quantity} readOnly />
-                            <button className="btn btn-outline-secondary">+</button>
+                            <button 
+                              className="btn btn-outline-secondary"
+                              onClick={() => item.quantity > 1 && handleUpdateQuantity(item.productId, item.quantity - 1)}
+                            >-</button>
+                            <input 
+                              type="text" 
+                              className="form-control text-center" 
+                              value={item.quantity}
+                              readOnly 
+                            />
+                            <button 
+                              className="btn btn-outline-secondary"
+                              onClick={() => item.quantity < item.stock && handleUpdateQuantity(item.productId, item.quantity + 1)}
+                            >+</button>
                           </div>
                         </div>
                         <div className="col-md-2 text-end">
                           <p className="fw-bold mb-0">${(item.price * item.quantity).toFixed(2)}</p>
                         </div>
                         <div className="col-md-1 text-end">
-                          <button className="btn btn-sm text-danger">
+                          <button 
+                            className="btn btn-sm text-danger"
+                            onClick={() => handleRemoveFromCart(item.productId)}
+                          >
                             <i className="bi bi-trash"></i>
                           </button>
                         </div>
@@ -69,10 +159,33 @@ function Cart() {
                     
                     <div className="d-flex justify-content-between align-items-center">
                       <div className="input-group" style={{ maxWidth: '300px' }}>
-                        <input type="text" className="form-control" placeholder="Promo code" />
-                        <button className="btn btn-secondary">Apply</button>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          placeholder="Discount code" 
+                          value={couponInput}
+                          onChange={(e) => setCouponInput(e.target.value)}
+                        />
+                        {couponCode ? (
+                          <button 
+                            className="btn btn-outline-danger"
+                            onClick={handleRemoveCoupon}
+                          >
+                            Remove
+                          </button>
+                        ) : (
+                          <button 
+                            className="btn btn-secondary"
+                            onClick={handleApplyCoupon}
+                          >
+                            Apply
+                          </button>
+                        )}
                       </div>
-                      <button className="btn btn-outline-primary">
+                      <button 
+                        className="btn btn-outline-primary"
+                        onClick={handleContinueShopping}
+                      >
                         <i className="bi bi-arrow-left me-2"></i>Continue Shopping
                       </button>
                     </div>
@@ -83,7 +196,12 @@ function Cart() {
                   <i className="bi bi-cart-x display-1 text-muted mb-3"></i>
                   <h3>Your cart is empty</h3>
                   <p className="text-muted">Looks like you haven't added any products to your cart yet.</p>
-                  <a href="/products" className="btn btn-primary mt-3">Start Shopping</a>
+                  <button 
+                    className="btn btn-primary mt-3"
+                    onClick={handleContinueShopping}
+                  >
+                    Start Shopping
+                  </button>
                 </div>
               )}
             </div>
@@ -98,9 +216,16 @@ function Cart() {
                     <span>${subtotal.toFixed(2)}</span>
                   </div>
                   
+                  {discount > 0 && (
+                    <div className="d-flex justify-content-between mb-2 text-success">
+                      <span>Discount ({discount * 100}%)</span>
+                      <span>-${discountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  
                   <div className="d-flex justify-content-between mb-2">
                     <span>Shipping</span>
-                    <span>{shipping === 0 ? 'Free' : `$${shipping.toFixed(2)}`}</span>
+                    <span>{cartItems.length === 0 ? '$0.00' : `$${safeShipping.toFixed(2)}`}</span>
                   </div>
                   
                   <div className="d-flex justify-content-between mb-2">
@@ -116,7 +241,13 @@ function Cart() {
                   </div>
                   
                   <div className="d-grid">
-                    <button className="btn btn-primary btn-lg mb-3">Proceed to Checkout</button>
+                    <button 
+                      className="btn btn-primary btn-lg mb-3"
+                      onClick={handleCheckout}
+                      disabled={cartItems.length === 0}
+                    >
+                      Proceed to Checkout
+                    </button>
                     <div className="text-center">
                       <span><i className="bi bi-shield-lock me-1"></i>Secure Checkout</span>
                     </div>
@@ -135,7 +266,12 @@ function Cart() {
                 <div className="card-body">
                   <h5 className="fw-bold mb-3">Need Help?</h5>
                   <p className="mb-2"><i className="bi bi-question-circle me-2"></i>Have questions about your order?</p>
-                  <a href="/contact" className="btn btn-outline-secondary w-100">Contact Support</a>
+                  <button 
+                    className="btn btn-outline-secondary w-100"
+                    onClick={() => navigate('/contact')}
+                  >
+                    Contact Support
+                  </button>
                 </div>
               </div>
             </div>

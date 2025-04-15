@@ -1,4 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { register } from '../slices/userSlice';
+import { toast, ToastContainer } from 'react-toastify';
 
 function Signup() {
   const [formData, setFormData] = useState({
@@ -10,6 +14,18 @@ function Signup() {
     agreeTerms: false
   });
   
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  
+  const { loading, error, userInfo } = useSelector((state) => state.user);
+  
+  useEffect(() => {
+    // If user is already logged in, redirect to home page
+    if (userInfo) {
+      navigate('/');
+    }
+  }, [navigate, userInfo]);
+  
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -20,23 +36,42 @@ function Signup() {
   
   const handleSubmit = (e) => {
     e.preventDefault();
-    // In a real app, you would handle registration here
-    console.log('Registration attempt with:', formData);
     
-    // Validation would be performed here
+    // Validation
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords don't match!");
+      toast.error("Passwords don't match!");
       return;
     }
+    
+    if (formData.password.length < 8) {
+      toast.error("Password must be at least 8 characters long");
+      return;
+    }
+    
+    if (!formData.agreeTerms) {
+      toast.error("You must agree to the Terms of Service and Privacy Policy");
+      return;
+    }
+    
+    // Dispatch register action with object parameter
+    dispatch(register({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      password: formData.password
+    }));
   };
   
   return (
     <>
+      <ToastContainer position="top-right" />
       <div className="row justify-content-center my-5">
         <div className="col-sm-11 col-md-10 col-lg-8 col-xl-7">
           <div className="card border-0 shadow-sm">
             <div className="card-body p-4 p-md-5">
               <h2 className="fw-bold mb-4 text-center">Create an Account</h2>
+              
+              {error && <div className="alert alert-danger">{error}</div>}
               
               <form onSubmit={handleSubmit}>
                 <div className="row">
@@ -128,7 +163,13 @@ function Signup() {
                 </div>
                 
                 <div className="d-grid mb-4">
-                  <button type="submit" className="btn btn-primary btn-lg">Create Account</button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary btn-lg"
+                    disabled={loading}
+                  >
+                    {loading ? 'Creating Account...' : 'Create Account'}
+                  </button>
                 </div>
                 
                 <div className="text-center">
