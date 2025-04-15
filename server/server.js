@@ -36,7 +36,7 @@ app.use(cors({
 app.use(express.json());
 
 // MongoDB Connection
-const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://root:123@peakhive.gjhdct3.mongodb.net/?retryWrites=true&w=majority&appName=peakhive';
+const MONGO_URI = process.env.MONGO_URI;
 
 // Print important environment variables for debugging (without revealing secrets)
 console.log('Environment variables loaded:');
