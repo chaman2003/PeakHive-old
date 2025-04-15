@@ -26,9 +26,23 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://peakhive.vercel.app', 'https://www.peakhive.vercel.app'] 
-    : 'http://localhost:5173',
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps, curl requests)
+    if(!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'https://peakhive.vercel.app',
+      'https://www.peakhive.vercel.app'
+    ];
+    
+    if(allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      console.log('Origin not allowed by CORS:', origin);
+      callback(null, true); // Still allow for now, while debugging
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
@@ -38,12 +52,14 @@ app.use(express.json());
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI;
 
-// Print important environment variables for debugging (without revealing secrets)
-console.log('Environment variables loaded:');
+// Print more detailed environment information
+console.log('============= SERVER ENVIRONMENT =============');
 console.log('- NODE_ENV:', process.env.NODE_ENV);
-console.log('- JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set');
 console.log('- PORT:', process.env.PORT || 5000);
 console.log('- MONGO_URI:', process.env.MONGO_URI ? 'Set' : 'Not set');
+console.log('- JWT_SECRET:', process.env.JWT_SECRET ? 'Set' : 'Not set');
+console.log('- Production mode:', process.env.NODE_ENV === 'production' ? 'Yes' : 'No');
+console.log('============================================');
 
 // Enhanced MongoDB connection with more options
 mongoose.connect(MONGO_URI, {
