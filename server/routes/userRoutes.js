@@ -16,6 +16,7 @@ const router = express.Router();
 
 // Public routes
 router.post('/', registerUser);
+router.post('/register', registerUser);
 router.post('/login', loginUser);
 
 // Protected routes - logged in users

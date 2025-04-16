@@ -33,9 +33,9 @@ const getUserInfo = () => {
 // Register user
 export const register = createAsyncThunk(
   'users/register',
-  async ({ name, email, password }, { rejectWithValue }) => {
+  async ({ firstName, lastName, email, password }, { rejectWithValue }) => {
     try {
-      const { data } = await api.post('/users/register', { name, email, password });
+      const { data } = await api.post('/users/register', { firstName, lastName, email, password });
       
       const tabSessionId = getTabSessionId();
       localStorage.setItem('userInfo', JSON.stringify(data));
