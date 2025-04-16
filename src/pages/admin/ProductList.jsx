@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FaEdit, FaTrash, FaSearch, FaPlus, FaInfoCircle } from 'react-icons/fa';
+import { FaEdit, FaTrash, FaSearch, FaPlus, FaInfoCircle, FaFileUpload } from 'react-icons/fa';
 import { fetchProducts, deleteProduct } from '../../api/adminApi';
 import { toast } from 'react-toastify';
 
@@ -189,10 +189,16 @@ function ProductList() {
     <div className="container py-5">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-bold">Product Management</h2>
-        <Link to="/admin/products/create" className="btn btn-primary">
-          <FaPlus className="me-2" />
-          Add New Product
-        </Link>
+        <div className="d-flex gap-2">
+          <Link to="/admin/products/bulk-upload" className="btn btn-success">
+            <FaFileUpload className="me-2" />
+            Bulk Upload
+          </Link>
+          <Link to="/admin/products/create" className="btn btn-primary">
+            <FaPlus className="me-2" />
+            Add New Product
+          </Link>
+        </div>
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}

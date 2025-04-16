@@ -5,7 +5,8 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
-  getProductCount
+  getProductCount,
+  bulkCreateProducts
 } from '../controllers/productController.js';
 import { protect, admin } from '../middleware/authMiddleware.js';
 
@@ -33,6 +34,8 @@ router.get('/categories', getCategories);
 
 // Product count route for dashboard
 router.get('/count', protect, admin, getProductCount);
+
+router.route('/bulk').post(protect, admin, bulkCreateProducts);
 
 router.route('/:id')
   .get(getProductById)

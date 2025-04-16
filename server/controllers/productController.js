@@ -1,5 +1,10 @@
 import Product from '../models/Product.js';
 import mongoose from 'mongoose';
+import Cart from '../models/cartModel.js';
+import Wishlist from '../models/wishlistModel.js';
+import Review from '../models/reviewModel.js';
+import asyncHandler from 'express-async-handler';
+import logger from '../utils/logger.js';
 
 // @desc    Fetch all products
 // @route   GET /api/products
@@ -184,7 +189,6 @@ const deleteProduct = async (req, res) => {
     
     try {
       // 1. Remove the product from all carts
-      const Cart = await import('../models/Cart.js').then(m => m.default);
       await Cart.updateMany(
         { 'items.product': productId },
         { $pull: { items: { product: productId } } },
@@ -193,7 +197,6 @@ const deleteProduct = async (req, res) => {
       console.log(`Removed product ${productId} from all carts`);
       
       // 2. Remove the product from all wishlists
-      const Wishlist = await import('../models/Wishlist.js').then(m => m.default);
       await Wishlist.updateMany(
         { productIds: productId },
         { $pull: { productIds: productId } },
@@ -202,7 +205,6 @@ const deleteProduct = async (req, res) => {
       console.log(`Removed product ${productId} from all wishlists`);
       
       // 3. Remove all reviews for this product
-      const Review = await import('../models/Review.js').then(m => m.default);
       await Review.deleteMany({ product: productId }, { session });
       console.log(`Removed all reviews for product ${productId}`);
       
@@ -251,11 +253,70 @@ const getProductCount = async (req, res) => {
   }
 };
 
+/**
+ * @desc    Create multiple products from bulk upload
+ * @route   POST /api/products/bulk
+ * @access  Private/Admin
+ */
+const bulkCreateProducts = asyncHandler(async (req, res) => {
+  const { products } = req.body;
+
+  if (!products || !Array.isArray(products) || products.length === 0) {
+    res.status(400);
+    throw new Error('No valid products data provided');
+  }
+
+  logger.info(`Attempting to create ${products.length} products in bulk`);
+  
+  try {
+    // Validate all products before insertion
+    const invalidProducts = products.filter(product => 
+      !product.name || !product.price || !product.category);
+
+    if (invalidProducts.length > 0) {
+      res.status(400);
+      throw new Error(`${invalidProducts.length} products are missing required fields (name, price, category)`);
+    }
+
+    // Prepare products for insertion with default values for missing fields
+    const productsToInsert = products.map(product => ({
+      user: req.user._id,
+      name: product.name,
+      price: product.price,
+      description: product.description || 'No description provided',
+      images: product.images || [],
+      brand: product.brand || 'Generic',
+      category: product.category,
+      countInStock: product.countInStock || 0,
+      numReviews: 0,
+      rating: 0,
+      featured: product.featured || false,
+      isPublished: product.isPublished || true
+    }));
+
+    // Use insertMany for bulk insertion
+    const createdProducts = await Product.insertMany(productsToInsert);
+    
+    logger.info(`Successfully created ${createdProducts.length} products in bulk`);
+    res.status(201).json({
+      success: true,
+      count: createdProducts.length,
+      products: createdProducts
+    });
+    
+  } catch (error) {
+    logger.error(`Bulk product creation failed: ${error.message}`);
+    res.status(500);
+    throw new Error(`Failed to create products in bulk: ${error.message}`);
+  }
+});
+
 export {
   getProducts,
   getProductById,
   createProduct,
   updateProduct,
   deleteProduct,
-  getProductCount
+  getProductCount,
+  bulkCreateProducts
 }; 

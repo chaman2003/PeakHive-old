@@ -349,4 +349,15 @@ export const deleteContactMessage = async (messageId) => {
     console.error('Error deleting contact message:', error);
     throw error;
   }
+};
+
+// Create products in bulk
+export const createProductsBulk = async (productsData) => {
+  try {
+    const response = await api.post('/products/bulk', { products: productsData });
+    return response.data;
+  } catch (error) {
+    console.error('Error creating products in bulk:', error);
+    throw error;
+  }
 }; 

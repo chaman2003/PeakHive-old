@@ -29,6 +29,7 @@ import OrderDetail from './pages/admin/OrderDetail';
 import ReviewList from './pages/admin/ReviewList';
 import ProductEdit from './pages/admin/ProductEdit';
 import ContactMessageList from './pages/admin/ContactMessageList';
+import BulkProductUpload from './pages/admin/BulkProductUpload';
 
 // Define all routes in one place for better organization
 const routes = [
@@ -135,6 +136,14 @@ const routes = [
     element: (
       <AdminRoute>
         <ProductEdit />
+      </AdminRoute>
+    ) 
+  },
+  { 
+    path: '/admin/products/bulk-upload', 
+    element: (
+      <AdminRoute>
+        <BulkProductUpload />
       </AdminRoute>
     ) 
   },
