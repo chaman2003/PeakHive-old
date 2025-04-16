@@ -40,17 +40,40 @@ api.interceptors.request.use(
       }
     }
     
+    // Debug for profile request
+    if (config.url && (config.url.includes('/users/profile') || config.url.includes('/profile'))) {
+      console.log('Making request to profile API:', config.url);
+      console.log('User info in storage:', userInfo ? 'Present' : 'Not found');
+    }
+    
     if (userInfo) {
       try {
-        const { token } = JSON.parse(userInfo);
+        const parsedUserInfo = JSON.parse(userInfo);
+        const { token } = parsedUserInfo;
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+          
+          // Debug for profile request
+          if (config.url && (config.url.includes('/users/profile') || config.url.includes('/profile'))) {
+            console.log('Including auth token in profile request:', `Bearer ${token.substring(0, 10)}...`);
+          }
+        } else {
+          // Debug for profile request
+          if (config.url && (config.url.includes('/users/profile') || config.url.includes('/profile'))) {
+            console.log('No token found in user info');
+            console.log('User info structure:', Object.keys(parsedUserInfo));
+          }
         }
       } catch (error) {
         console.error('Error parsing user info in request interceptor:', error);
         // Clear from both storages
         window.sessionStorage.removeItem(`userInfo_${tabSessionId}`);
         localStorage.removeItem('userInfo');
+      }
+    } else {
+      // Debug for profile request
+      if (config.url && (config.url.includes('/users/profile') || config.url.includes('/profile'))) {
+        console.log('No user info found for profile request');
       }
     }
     return config;

@@ -66,21 +66,32 @@ function Profile() {
     // Track if this is an actual update rather than initial load
     const isRealUpdate = updateSuccess && !initialLoadRef.current;
     
+    // Debug logs
+    console.log("Profile component state:", {
+      userDetails,
+      loading,
+      error,
+      formData,
+      initialLoad: initialLoadRef.current
+    });
+    
     // If we don't have the user details, fetch them
-    if (!userDetails.user || !userDetails.user.firstName) {
+    if (!userDetails || !userDetails.firstName) {
+      console.log("Fetching user details because missing data");
       // Use test database for fetching user profile
       dispatch(getUserDetails({ id: 'profile', useTestDb: true }));
     } else if (initialLoadRef.current) {
+      console.log("Populating form with user data:", userDetails);
       // Populate form with existing user data ONLY on the first load
       setFormData({
-        firstName: userDetails.user.firstName || '',
-        lastName: userDetails.user.lastName || '',
-        email: userDetails.user.email || '',
-        phone: userDetails.user.phone || '',
-        avatar: userDetails.user.avatar || localStorage.getItem('userAvatar') || '',
+        firstName: userDetails.firstName || '',
+        lastName: userDetails.lastName || '',
+        email: userDetails.email || '',
+        phone: userDetails.phone || '',
+        avatar: userDetails.profileImage || localStorage.getItem('userAvatar') || '',
       });
-      console.log('Loaded phone from user details:', userDetails.user.phone || '[not set]');
-      setSelectedAvatar(userDetails.user.avatar || localStorage.getItem('userAvatar') || '');
+      console.log('Loaded phone from user details:', userDetails.phone || '[not set]');
+      setSelectedAvatar(userDetails.profileImage || localStorage.getItem('userAvatar') || '');
       // Mark initial load complete
       initialLoadRef.current = false;
     }
@@ -89,17 +100,17 @@ function Profile() {
     if (isRealUpdate) {
       // Check if this was a profile update (not just avatar)
       const wasProfileUpdate = 
-        formData.firstName !== userDetails.user?.firstName || 
-        formData.lastName !== userDetails.user?.lastName ||
-        formData.email !== userDetails.user?.email ||
-        formData.phone !== userDetails.user?.phone;
+        formData.firstName !== userDetails?.firstName || 
+        formData.lastName !== userDetails?.lastName ||
+        formData.email !== userDetails?.email ||
+        formData.phone !== userDetails?.phone;
       
       if (wasProfileUpdate) {
         toast.success('Profile updated successfully');
       }
       
       // Still update localStorage for avatar without showing toast
-      const avatarWasUpdated = formData.avatar !== userDetails.user?.avatar;
+      const avatarWasUpdated = formData.avatar !== userDetails?.profileImage;
       if (avatarWasUpdated) {
         try {
           const userInfo = JSON.parse(localStorage.getItem('userInfo') || '{}');
@@ -125,12 +136,12 @@ function Profile() {
       setEditAddressIndex(-1);
       dispatch(resetAddressSuccess());
     }
-  }, [dispatch, userDetails.user, updateSuccess, addressSuccess, formData]);
+  }, [dispatch, userDetails, updateSuccess, addressSuccess, formData]);
   
   // Create a debounced save function for the avatar
   const debouncedSaveAvatar = useCallback((avatarUrl) => {
     // Skip saving if it's the same as the existing avatar
-    if (avatarUrl === userDetails.user?.avatar) {
+    if (avatarUrl === userDetails?.profileImage) {
       return;
     }
     
@@ -171,7 +182,7 @@ function Profile() {
       isSavingRef.current = false;
       setIsSaving(false);
     }, 2000);
-  }, [dispatch, formData, userDetails.user?.avatar]);
+  }, [dispatch, formData, userDetails?.profileImage]);
   
   // Ensure avatar is loaded from cache if needed
   useEffect(() => {
@@ -263,7 +274,7 @@ function Profile() {
 
     if (editAddressIndex >= 0) {
       // Update existing address
-      const addressId = userDetails?.user?.addresses[editAddressIndex]?._id;
+      const addressId = userDetails?.addresses[editAddressIndex]?._id;
       if (!addressId) {
         toast.error("Address ID not found");
         return;
@@ -280,7 +291,7 @@ function Profile() {
   };
 
   const handleEditAddress = (index) => {
-    const address = userDetails?.user?.addresses?.[index];
+    const address = userDetails?.addresses?.[index];
     if (!address) {
       toast.error("Address information not available");
       return;
@@ -320,7 +331,7 @@ function Profile() {
     setAvatarChanged(true);
     
     // Start saving right away when an avatar is selected, but silently
-    if (avatarUrl !== userDetails.user?.avatar) {
+    if (avatarUrl !== userDetails?.profileImage) {
       debouncedSaveAvatar(avatarUrl);
     }
   };
@@ -790,13 +801,13 @@ function Profile() {
                     </div>
                   )}
 
-                  {!userDetails?.user?.addresses || userDetails?.user?.addresses.length === 0 ? (
+                  {!userDetails?.addresses || userDetails?.addresses.length === 0 ? (
                     <div className="alert alert-info">
                       You don't have any saved addresses yet. Add an address to make checkout faster.
                     </div>
                   ) : (
                     <div className="row">
-                      {userDetails?.user?.addresses.map((address, index) => (
+                      {userDetails?.addresses.map((address, index) => (
                         <div className="col-md-6 mb-3" key={index}>
                           <div className="card h-100 border">
                             <div className="card-body">

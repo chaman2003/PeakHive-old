@@ -141,9 +141,24 @@ export const getUserDetails = createAsyncThunk(
       const url = useTestDb ? `${endpoint}?test=true` : endpoint;
       
       console.log(`Fetching user details from ${useTestDb ? 'test database' : 'regular database'}`);
-      const { data } = await api.get(url);
-      return data;
+      
+      // Make the API request
+      const response = await api.get(url);
+      console.log('User details API response:', {
+        status: response.status,
+        data: response.data,
+        hasToken: !!api.defaults.headers.common['Authorization']
+      });
+      
+      return response.data;
     } catch (error) {
+      console.error('Error fetching user details:', error);
+      if (error.response) {
+        console.error('Error response:', {
+          status: error.response.status,
+          data: error.response.data
+        });
+      }
       return rejectWithValue(
         error.response && error.response.data.message
           ? error.response.data.message
@@ -307,7 +322,7 @@ const userSlice = createSlice({
   initialState: {
     userInfo: getUserInfo(),
     users: [],
-    userDetails: null,
+    userDetails: {},
     loading: false,
     error: null,
     success: false,
