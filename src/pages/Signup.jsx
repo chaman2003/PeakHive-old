@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { register } from '../slices/userSlice';
 import { toast, ToastContainer } from 'react-toastify';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 function Signup() {
   const [formData, setFormData] = useState({
@@ -13,6 +14,11 @@ function Signup() {
     password: '',
     confirmPassword: '',
     agreeTerms: false
+  });
+  
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    password: false,
+    confirmPassword: false
   });
   
   const dispatch = useDispatch();
@@ -32,6 +38,13 @@ function Signup() {
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
+    }));
+  };
+  
+  const togglePasswordVisibility = (field) => {
+    setPasswordVisibility(prev => ({
+      ...prev,
+      [field]: !prev[field]
     }));
   };
   
@@ -136,31 +149,49 @@ function Signup() {
                 
                 <div className="mb-3">
                   <label htmlFor="password" className="form-label">Password</label>
-                  <input 
-                    type="password" 
-                    className="form-control" 
-                    id="password" 
-                    name="password"
-                    placeholder="Create a password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                  />
+                  <div className="input-group">
+                    <input 
+                      type={passwordVisibility.password ? "text" : "password"} 
+                      className="form-control" 
+                      id="password" 
+                      name="password"
+                      placeholder="Create a password"
+                      value={formData.password}
+                      onChange={handleChange}
+                      required
+                    />
+                    <button 
+                      className="btn btn-outline-secondary" 
+                      type="button"
+                      onClick={() => togglePasswordVisibility('password')}
+                    >
+                      {passwordVisibility.password ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                   <div className="form-text">Password must be at least 8 characters long</div>
                 </div>
                 
                 <div className="mb-3">
                   <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
-                  <input 
-                    type="password" 
-                    className="form-control" 
-                    id="confirmPassword" 
-                    name="confirmPassword"
-                    placeholder="Confirm your password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                  />
+                  <div className="input-group">
+                    <input 
+                      type={passwordVisibility.confirmPassword ? "text" : "password"} 
+                      className="form-control" 
+                      id="confirmPassword" 
+                      name="confirmPassword"
+                      placeholder="Confirm your password"
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      required
+                    />
+                    <button 
+                      className="btn btn-outline-secondary" 
+                      type="button"
+                      onClick={() => togglePasswordVisibility('confirmPassword')}
+                    >
+                      {passwordVisibility.confirmPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </div>
                 
                 <div className="mb-4 form-check">

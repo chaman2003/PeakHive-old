@@ -11,7 +11,7 @@ import {
 import { Link } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { FaPlus, FaEdit, FaTrash, FaUserCircle, FaCamera } from 'react-icons/fa';
+import { FaPlus, FaEdit, FaTrash, FaUserCircle, FaCamera, FaEye, FaEyeSlash } from 'react-icons/fa';
 import { Modal, Button } from 'react-bootstrap';
 
 function Profile() {
@@ -61,6 +61,13 @@ function Profile() {
   const saveTimeoutRef = useRef(null);
   const isSavingRef = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Add state for password
+  const [passwordVisibility, setPasswordVisibility] = useState({
+    currentPassword: false,
+    newPassword: false,
+    confirmPassword: false,
+  });
   
   useEffect(() => {
     // Track if this is an actual update rather than initial load
@@ -358,6 +365,14 @@ function Profile() {
     
     // Use the debounced save function
     debouncedSaveAvatar(avatarUrl);
+  };
+
+  // Add a function to toggle password visibility
+  const togglePasswordVisibility = (field) => {
+    setPasswordVisibility(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
   };
 
   // Replace the existing predefined avatars array with categorized avatars
@@ -862,37 +877,64 @@ function Profile() {
                   <form onSubmit={handlePasswordSubmit}>
                     <div className="mb-3">
                       <label htmlFor="currentPassword" className="form-label">Current Password</label>
-                      <input 
-                        type="password" 
-                        className="form-control" 
-                        id="currentPassword"
-                        name="currentPassword" 
-                        value={passwordData.currentPassword}
-                        onChange={handlePasswordChange}
-                      />
+                      <div className="input-group">
+                        <input 
+                          type={passwordVisibility.currentPassword ? "text" : "password"} 
+                          className="form-control" 
+                          id="currentPassword"
+                          name="currentPassword" 
+                          value={passwordData.currentPassword}
+                          onChange={handlePasswordChange}
+                        />
+                        <button 
+                          className="btn btn-outline-secondary" 
+                          type="button"
+                          onClick={() => togglePasswordVisibility('currentPassword')}
+                        >
+                          {passwordVisibility.currentPassword ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
                     </div>
                     <div className="mb-3">
                       <label htmlFor="newPassword" className="form-label">New Password</label>
-                      <input 
-                        type="password" 
-                        className="form-control" 
-                        id="newPassword"
-                        name="newPassword" 
-                        value={passwordData.newPassword}
-                        onChange={handlePasswordChange}
-                      />
+                      <div className="input-group">
+                        <input 
+                          type={passwordVisibility.newPassword ? "text" : "password"} 
+                          className="form-control" 
+                          id="newPassword"
+                          name="newPassword" 
+                          value={passwordData.newPassword}
+                          onChange={handlePasswordChange}
+                        />
+                        <button 
+                          className="btn btn-outline-secondary" 
+                          type="button"
+                          onClick={() => togglePasswordVisibility('newPassword')}
+                        >
+                          {passwordVisibility.newPassword ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
                       <div className="form-text">Password must be at least 8 characters long</div>
                     </div>
                     <div className="mb-3">
                       <label htmlFor="confirmPassword" className="form-label">Confirm New Password</label>
-                      <input 
-                        type="password" 
-                        className="form-control" 
-                        id="confirmPassword"
-                        name="confirmPassword" 
-                        value={passwordData.confirmPassword}
-                        onChange={handlePasswordChange}
-                      />
+                      <div className="input-group">
+                        <input 
+                          type={passwordVisibility.confirmPassword ? "text" : "password"} 
+                          className="form-control" 
+                          id="confirmPassword"
+                          name="confirmPassword" 
+                          value={passwordData.confirmPassword}
+                          onChange={handlePasswordChange}
+                        />
+                        <button 
+                          className="btn btn-outline-secondary" 
+                          type="button"
+                          onClick={() => togglePasswordVisibility('confirmPassword')}
+                        >
+                          {passwordVisibility.confirmPassword ? <FaEyeSlash /> : <FaEye />}
+                        </button>
+                      </div>
                     </div>
                     <button 
                       type="submit" 

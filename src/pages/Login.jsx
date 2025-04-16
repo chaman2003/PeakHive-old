@@ -7,11 +7,13 @@ import 'react-toastify/dist/ReactToastify.css';
 // eslint-disable-next-line no-unused-vars
 import { motion } from 'framer-motion';
 import { fadeInUp, scaleUp } from '../utils/animationVariants';
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -49,6 +51,10 @@ function Login() {
     
     // Dispatch login action
     dispatch(login({ email, password }));
+  };
+  
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
   
   return (
@@ -103,15 +109,24 @@ function Login() {
                   className="mb-3"
                 >
                   <label htmlFor="password" className="form-label">Password</label>
-                  <input 
-                    type="password" 
-                    className="form-control" 
-                    id="password"
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
+                  <div className="input-group">
+                    <input 
+                      type={showPassword ? "text" : "password"} 
+                      className="form-control" 
+                      id="password"
+                      placeholder="Enter your password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                    <button 
+                      className="btn btn-outline-secondary" 
+                      type="button"
+                      onClick={togglePasswordVisibility}
+                    >
+                      {showPassword ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </motion.div>
                 
                 <motion.div 
