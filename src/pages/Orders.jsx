@@ -268,16 +268,7 @@ function Orders() {
 
   // Check if order can be deleted (only delivered or cancelled orders)
   const canDeleteOrder = (order) => {
-    if (!order) return false;
-    
-    // Allow deletion for orders with cancellation requests
-    if (ordersWithCancellationRequests.includes(order._id)) {
-      return true;
-    }
-    
-    // Allow deletion only for delivered or cancelled orders
-    return (order.isDelivered || order.status === 'delivered' || 
-            order.isCanceled || order.status === 'canceled');
+    return order.status === 'pending' || order.status === 'processing';
   };
 
   // Check if order is eligible for cancellation request (paid orders that are not delivered)
@@ -617,13 +608,8 @@ function Orders() {
     return commonReasons;
   };
 
-  // Add function to check if product is available
-  const isProductAvailable = (item) => {
-    return item && item.product !== null && item.product !== undefined;
-  };
-
   // Handle order deletion
-  const handleDeleteOrder = (orderId) => {
+  const handleDeleteOrder = async (orderId) => {
     if (!orderId) {
       toast.error("No order selected for deletion");
       return;
@@ -1114,17 +1100,8 @@ function Orders() {
                                 />
                               )}
                               <div>
-                                <p className="mb-0 fw-bold">
-                                  {!isProductAvailable(item) ? (
-                                    <span className="text-danger">Product not available</span>
-                                  ) : (
-                                    item.name
-                                  )}
-                                </p>
-                                {!isProductAvailable(item) && (
-                                  <small className="text-danger">This product has been removed from our catalog.</small>
-                                )}
-                      </div>
+                                <p className="mb-0 fw-bold">{item.name}</p>
+                              </div>
                             </div>
                           </td>
                           <td>{Number(item.qty || item.quantity || 0)}</td>
@@ -1186,14 +1163,6 @@ function Orders() {
                         </button>
                       )}
                     </div>
-                    
-                    {/* Show warning if there are unavailable products */}
-                    {order.orderItems.some(item => !isProductAvailable(item)) && (
-                      <div className="alert alert-warning mt-3">
-                        <p className="mb-2"><strong>Some products in this order are no longer available.</strong></p>
-                        <p className="mb-0">These products have been removed from our catalog. You may delete this order for record-keeping purposes.</p>
-                      </div>
-                    )}
                   </div>
                   <div className="col-md-6">
                     <div className="card bg-light">
