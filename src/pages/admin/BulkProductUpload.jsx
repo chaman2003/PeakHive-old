@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Form, Button, Alert, Card, Spinner } from 'react-bootstrap';
 import * as XLSX from 'xlsx';
 import { toast } from 'react-toastify';
-import AdminBreadcrumb from '../../components/AdminBreadcrumb';
+import AdminBreadcrumb from '../../components/AdminBreadcrumb.jsx';
 import { createProductsBulk } from '../../api/adminApi';
 
 const BulkProductUpload = () => {
