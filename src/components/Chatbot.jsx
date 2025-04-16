@@ -4,8 +4,24 @@ import { toast } from 'react-toastify';
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from 'framer-motion';
 
+// API configuration
 const GEMINI_API_KEY = 'AIzaSyBkQcoIb4W3XjSGG9a5Uw55t2bZLMSUpDo';
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent';
+
+// Fallback responses for when API is unavailable
+const FALLBACK_RESPONSES = [
+  "I'm sorry, but I can't access the AI service right now. Please try asking about our products directly in the search bar or contact customer support.",
+  "Our AI assistant is currently unavailable in your region. You can browse our products or contact us directly for help.",
+  "I apologize, but I'm unable to answer your question right now. Please try using our navigation menu to find what you're looking for.",
+  "Due to your location, I can't access the AI service. Please use our category filters to browse products or contact support for assistance.",
+  "I'm having trouble connecting to our AI service. Please check our FAQ section or contact us directly for help with your question."
+];
+
+// Get a random fallback response
+const getRandomFallbackResponse = () => {
+  const index = Math.floor(Math.random() * FALLBACK_RESPONSES.length);
+  return FALLBACK_RESPONSES[index];
+};
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -17,6 +33,7 @@ const Chatbot = () => {
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [apiAvailable, setApiAvailable] = useState(true);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -27,6 +44,56 @@ const Chatbot = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Check if API is available on component mount
+  useEffect(() => {
+    checkApiAvailability();
+  }, []);
+
+  // Function to check if API is available in user's region
+  const checkApiAvailability = async () => {
+    try {
+      console.log("Checking Gemini API availability...");
+      const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: "Hello" }
+              ]
+            }
+          ]
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.error) {
+        console.log("API check failed:", data.error);
+        // Check if this is a location restriction
+        if (data.error.message && data.error.message.includes("location is not supported")) {
+          console.log("API not available in user's region");
+          setApiAvailable(false);
+          setMessages(prev => [
+            prev[0],
+            { 
+              role: 'assistant', 
+              content: "I notice that our AI assistant isn't available in your region. I'll do my best to help with basic information, but my responses will be limited." 
+            }
+          ]);
+        }
+      } else {
+        console.log("API check successful, Gemini is available");
+        setApiAvailable(true);
+      }
+    } catch (error) {
+      console.error("Error checking API availability:", error);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
@@ -36,7 +103,22 @@ const Chatbot = () => {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
+    // Log the user's message
+    console.log("User message:", userMessage);
+
+    // If API is not available, respond with fallback
+    if (!apiAvailable) {
+      console.log("Using fallback response (API not available in region)");
+      setTimeout(() => {
+        const fallbackResponse = getRandomFallbackResponse();
+        setMessages(prev => [...prev, { role: 'assistant', content: fallbackResponse }]);
+        setIsLoading(false);
+      }, 1000); // Small delay to simulate thinking
+      return;
+    }
+
     try {
+      console.log("Sending request to Gemini API...");
       // Simplified request format for gemini-1.5-flash
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
@@ -65,11 +147,20 @@ const Chatbot = () => {
       
       if (data.error) {
         console.error('API error:', data.error);
-        throw new Error(data.error.message || 'API returned an error');
-      }
-      
-      if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
+        
+        // Check for location restriction error
+        if (data.error.message && data.error.message.includes("location is not supported")) {
+          console.log("Location not supported, setting API as unavailable");
+          setApiAvailable(false);
+          const fallbackResponse = "I'm sorry, but our AI assistant isn't available in your region. Please contact customer support or browse our products directly.";
+          setMessages(prev => [...prev, { role: 'assistant', content: fallbackResponse }]);
+        } else {
+          throw new Error(data.error.message || 'API returned an error');
+        }
+      } else if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
         const botResponse = data.candidates[0].content.parts[0].text;
+        console.log("Received response from API:", botResponse.substring(0, 100) + "...");
+        
         // Process response to remove markdown formatting (**, ##, etc.)
         const cleanResponse = botResponse
           .replace(/\*\*(.*?)\*\*/g, '$1')
@@ -81,6 +172,7 @@ const Chatbot = () => {
         
         setMessages(prev => [...prev, { role: 'assistant', content: cleanResponse }]);
       } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+        console.log("Response blocked by safety settings:", data.promptFeedback);
         setMessages(prev => [...prev, { 
           role: 'assistant', 
           content: "I'm sorry, I can't respond to that query. Please try asking something related to our products or services." 
@@ -91,10 +183,19 @@ const Chatbot = () => {
       }
     } catch (error) {
       console.error('Error during API call:', error);
+      
+      // Display appropriate error message based on error type
+      let errorMessage = 'I apologize, but I encountered an error. Could you please rephrase your question?';
+      
+      if (error.message && error.message.includes("location is not supported")) {
+        setApiAvailable(false);
+        errorMessage = "I'm sorry, but our AI assistant isn't available in your region. Please contact customer support or browse our products directly.";
+      }
+      
       toast.error(`Error: ${error.message || 'Something went wrong'}`);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
-        content: 'I apologize, but I encountered an error. Could you please rephrase your question?' 
+        content: errorMessage
       }]);
     } finally {
       setIsLoading(false);
@@ -166,7 +267,7 @@ const Chatbot = () => {
                 >
                   <FaRobot className="me-2" />
                 </motion.div>
-                <h6 className="mb-0">PeakHive Assistant</h6>
+                <h6 className="mb-0">PeakHive Assistant {!apiAvailable && "(Limited)"}</h6>
               </div>
               <motion.button
                 onClick={() => setIsOpen(false)}
@@ -245,7 +346,7 @@ const Chatbot = () => {
                 <input
                   type="text"
                   className="form-control"
-                  placeholder="Type your message..."
+                  placeholder={apiAvailable ? "Type your message..." : "AI limited in your region..."}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   disabled={isLoading}
@@ -271,6 +372,13 @@ const Chatbot = () => {
                   <FaPaperPlane />
                 </motion.button>
               </div>
+              {!apiAvailable && (
+                <div className="mt-2 text-center">
+                  <small className="text-muted">
+                    AI service is unavailable in your region. Limited responses only.
+                  </small>
+                </div>
+              )}
             </form>
           </motion.div>
         )}

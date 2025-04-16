@@ -8,7 +8,7 @@ import {
   updateUserAddress,
   resetAddressSuccess
 } from '../slices/userSlice';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { FaPlus, FaEdit, FaTrash, FaUserCircle, FaCamera, FaEye, FaEyeSlash } from 'react-icons/fa';
@@ -46,9 +46,10 @@ function Profile() {
   const [selectedCategory, setSelectedCategory] = useState('professional');
   
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   
   // Get user state from Redux store
-  const { userDetails, loading, error, updateSuccess, addressSuccess } = useSelector((state) => state.user);
+  const { userInfo, userDetails, loading, error, updateSuccess, addressSuccess } = useSelector((state) => state.user);
   
   // This is kept for backward compatibility with existing code that might use it
   // eslint-disable-next-line no-unused-vars
@@ -69,6 +70,27 @@ function Profile() {
     confirmPassword: false,
   });
   
+  // Add page error state
+  const [pageError, setPageError] = useState(null);
+  
+  // Check if user is logged in
+  useEffect(() => {
+    // Log current auth state
+    console.log('Auth state in Profile:', {
+      hasUserInfo: !!userInfo,
+      hasToken: userInfo?.token ? 'Yes' : 'No',
+      localStorageUserInfo: !!localStorage.getItem('userInfo'),
+      sessionStorageKeys: Object.keys(sessionStorage).filter(key => key.includes('userInfo'))
+    });
+    
+    // If not logged in, redirect to login
+    if (!userInfo || !userInfo.token) {
+      console.error('No user info or token found in Profile component');
+      toast.error('Please login to view your profile');
+      navigate('/login', { state: { from: '/profile' } });
+    }
+  }, [userInfo, navigate]);
+  
   useEffect(() => {
     // Track if this is an actual update rather than initial load
     const isRealUpdate = updateSuccess && !initialLoadRef.current;
@@ -83,11 +105,25 @@ function Profile() {
     });
     
     // If we don't have the user details, fetch them
-    if (!userDetails || !userDetails.firstName) {
+    if (userInfo && (!userDetails || !userDetails.firstName)) {
       console.log("Fetching user details because missing data");
-      // Use test database for fetching user profile
-      dispatch(getUserDetails({ id: 'profile', useTestDb: true }));
-    } else if (initialLoadRef.current) {
+      try {
+        // Use test database for fetching user profile 
+        dispatch(getUserDetails({ id: 'profile', useTestDb: true }))
+          .unwrap()
+          .then(data => {
+            console.log("Successfully fetched user details:", data);
+            setPageError(null);
+          })
+          .catch(err => {
+            console.error("Error fetching user details:", err);
+            setPageError("Failed to load profile data. Please try refreshing the page.");
+          });
+      } catch (err) {
+        console.error("Exception during user details fetch:", err);
+        setPageError("An unexpected error occurred. Please try logging in again.");
+      }
+    } else if (initialLoadRef.current && userDetails) {
       console.log("Populating form with user data:", userDetails);
       // Populate form with existing user data ONLY on the first load
       setFormData({
@@ -143,7 +179,16 @@ function Profile() {
       setEditAddressIndex(-1);
       dispatch(resetAddressSuccess());
     }
-  }, [dispatch, userDetails, updateSuccess, addressSuccess, formData]);
+  }, [dispatch, userInfo, userDetails, updateSuccess, addressSuccess, formData]);
+  
+  // Show error message if there's an error
+  useEffect(() => {
+    if (error) {
+      console.error("Profile error received:", error);
+      setPageError(error);
+      toast.error(error);
+    }
+  }, [error]);
   
   // Create a debounced save function for the avatar
   const debouncedSaveAvatar = useCallback((avatarUrl) => {
@@ -566,390 +611,414 @@ function Profile() {
   ];
   
   return (
-    <>
-      <ToastContainer position="top-right" />
-      <div className="container py-5">
-        <h1 className="fw-bold mb-5">My Account</h1>
-        
-        {loading ? (
-          <div className="text-center">
-            <div className="spinner-border text-primary" role="status">
-              <span className="visually-hidden">Loading...</span>
-            </div>
+    <div className="container my-5">
+      {/* Profile Title & Navigation */}
+      <div className="row mb-4">
+        <div className="col">
+          <h1 className="fw-bold mb-3">My Profile</h1>
+          <nav aria-label="breadcrumb">
+            <ol className="breadcrumb">
+              <li className="breadcrumb-item"><Link to="/">Home</Link></li>
+              <li className="breadcrumb-item active" aria-current="page">Profile</li>
+            </ol>
+          </nav>
+        </div>
+      </div>
+      
+      {/* Error message */}
+      {pageError && (
+        <div className="alert alert-danger mb-4">
+          <strong>Error:</strong> {pageError}
+          <button 
+            type="button" 
+            className="btn btn-outline-danger ms-3"
+            onClick={() => window.location.reload()}
+          >
+            Refresh Page
+          </button>
+        </div>
+      )}
+      
+      {/* Loading indicator */}
+      {loading && (
+        <div className="d-flex justify-content-center my-5">
+          <div className="spinner-border text-primary" role="status">
+            <span className="visually-hidden">Loading...</span>
           </div>
-        ) : error ? (
-          <div className="alert alert-danger">{error}</div>
-        ) : (
-          <div className="row g-4">
-            <div className="col-lg-4">
-              <div className="card border-0 shadow-sm mb-4">
-                <div className="card-body text-center py-4">
-                  <div className="text-center mb-4">
-                    <div className="position-relative d-inline-block">
-                      {formData.avatar ? (
-                        <div className="position-relative">
-                          <img 
-                            src={formData.avatar} 
-                            alt={`${formData.firstName} ${formData.lastName}`} 
-                            className="rounded-circle shadow-sm"
-                            style={{ width: '120px', height: '120px', objectFit: 'cover' }}
-                          />
-                          {isSaving && (
-                            <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-circle" 
-                                 style={{backgroundColor: 'rgba(0,0,0,0.2)'}}>
-                              <div className="spinner-border text-light spinner-border-sm" role="status">
-                                <span className="visually-hidden">Saving...</span>
-                              </div>
+        </div>
+      )}
+      
+      {/* Only show profile when not loading and no errors */}
+      {!loading && !pageError && (
+        <div className="row g-4">
+          <div className="col-lg-4">
+            <div className="card border-0 shadow-sm mb-4">
+              <div className="card-body text-center py-4">
+                <div className="text-center mb-4">
+                  <div className="position-relative d-inline-block">
+                    {formData.avatar ? (
+                      <div className="position-relative">
+                        <img 
+                          src={formData.avatar} 
+                          alt={`${formData.firstName} ${formData.lastName}`} 
+                          className="rounded-circle shadow-sm"
+                          style={{ width: '120px', height: '120px', objectFit: 'cover' }}
+                        />
+                        {isSaving && (
+                          <div className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center rounded-circle" 
+                               style={{backgroundColor: 'rgba(0,0,0,0.2)'}}>
+                            <div className="spinner-border text-light spinner-border-sm" role="status">
+                              <span className="visually-hidden">Saving...</span>
                             </div>
-                          )}
-                        </div>
-                      ) : (
-                        <FaUserCircle size={120} className="text-primary" />
-                      )}
-                      <Button 
-                        variant="primary" 
-                        size="sm" 
-                        className="position-absolute bottom-0 end-0 rounded-circle p-1"
-                        onClick={() => setShowAvatarModal(true)}
-                      >
-                        <FaCamera />
-                      </Button>
-                    </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <FaUserCircle size={120} className="text-primary" />
+                    )}
+                    <Button 
+                      variant="primary" 
+                      size="sm" 
+                      className="position-absolute bottom-0 end-0 rounded-circle p-1"
+                      onClick={() => setShowAvatarModal(true)}
+                    >
+                      <FaCamera />
+                    </Button>
                   </div>
-                  <h5 className="fw-bold mb-1">{formData.firstName} {formData.lastName}</h5>
-                  <p className="text-muted mb-0">{formData.email}</p>
                 </div>
-              </div>
-              
-              <div className="list-group list-group-flush shadow-sm mb-4">
-                <a href="#profile-section" className="list-group-item list-group-item-action active">
-                  <i className="bi bi-person me-2"></i>Profile
-                </a>
-                <a href="#addresses-section" className="list-group-item list-group-item-action">
-                  <i className="bi bi-geo-alt me-2"></i>Addresses
-                </a>
-                <a href="#security-section" className="list-group-item list-group-item-action">
-                  <i className="bi bi-shield-lock me-2"></i>Security
-                </a>
-                <Link to="/orders" className="list-group-item list-group-item-action">
-                  <i className="bi bi-bag me-2"></i>View All Orders
-                </Link>
+                <h5 className="fw-bold mb-1">{formData.firstName} {formData.lastName}</h5>
+                <p className="text-muted mb-0">{formData.email}</p>
               </div>
             </div>
             
-            <div className="col-lg-8">
-              <div className="card border-0 shadow-sm mb-4" id="profile-section">
-                <div className="card-header bg-white">
-                  <h5 className="mb-0 fw-bold">Profile Information</h5>
-                </div>
-                <div className="card-body">
-                  <form onSubmit={handleProfileSubmit}>
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label htmlFor="firstName" className="form-label">First Name</label>
-                        <input 
-                          type="text" 
-                          className="form-control" 
-                          id="firstName"
-                          name="firstName"
-                          value={formData.firstName}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label htmlFor="lastName" className="form-label">Last Name</label>
-                        <input 
-                          type="text" 
-                          className="form-control" 
-                          id="lastName"
-                          name="lastName" 
-                          value={formData.lastName}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="row mb-3">
-                      <div className="col-md-6">
-                        <label htmlFor="email" className="form-label">Email</label>
-                        <input 
-                          type="email" 
-                          className="form-control" 
-                          id="email"
-                          name="email" 
-                          value={formData.email}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div className="col-md-6">
-                        <label htmlFor="phone" className="form-label">Phone</label>
-                        <input 
-                          type="tel" 
-                          className="form-control" 
-                          id="phone"
-                          name="phone" 
-                          value={formData.phone}
-                          onChange={handleChange}
-                        />
-                      </div>
-                    </div>
-                    
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary"
-                      disabled={loading}
-                    >
-                      {loading ? 'Updating...' : 'Update Profile'}
-                    </button>
-                  </form>
-                </div>
+            <div className="list-group list-group-flush shadow-sm mb-4">
+              <a href="#profile-section" className="list-group-item list-group-item-action active">
+                <i className="bi bi-person me-2"></i>Profile
+              </a>
+              <a href="#addresses-section" className="list-group-item list-group-item-action">
+                <i className="bi bi-geo-alt me-2"></i>Addresses
+              </a>
+              <a href="#security-section" className="list-group-item list-group-item-action">
+                <i className="bi bi-shield-lock me-2"></i>Security
+              </a>
+              <Link to="/orders" className="list-group-item list-group-item-action">
+                <i className="bi bi-bag me-2"></i>View All Orders
+              </Link>
+            </div>
+          </div>
+          
+          <div className="col-lg-8">
+            <div className="card border-0 shadow-sm mb-4" id="profile-section">
+              <div className="card-header bg-white">
+                <h5 className="mb-0 fw-bold">Profile Information</h5>
               </div>
-              
-              <div className="card border-0 shadow-sm mb-4" id="addresses-section">
-                <div className="card-header bg-white d-flex justify-content-between align-items-center">
-                  <h5 className="mb-0 fw-bold">My Addresses</h5>
-                  {!showAddressForm && (
-                    <button 
-                      onClick={() => {
-                        setShowAddressForm(true);
-                        setAddressData({
-                          street: '',
-                          city: '',
-                          state: '',
-                          zip: '',
-                          country: '',
-                        });
-                        setEditAddressIndex(-1);
-                      }} 
-                      className="btn btn-outline-primary btn-sm"
-                    >
-                      <FaPlus className="me-1" /> Add Address
-                    </button>
-                  )}
-                </div>
-                <div className="card-body">
-                  {showAddressForm && (
-                    <div className="mb-4 border p-3 rounded bg-light">
-                      <h6 className="mb-3">{editAddressIndex >= 0 ? 'Edit Address' : 'Add New Address'}</h6>
-                      <form onSubmit={handleAddressSubmit}>
-                        <div className="mb-3">
-                          <label htmlFor="street" className="form-label">Street Address*</label>
+              <div className="card-body">
+                <form onSubmit={handleProfileSubmit}>
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label htmlFor="firstName" className="form-label">First Name</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        id="firstName"
+                        name="firstName"
+                        value={formData.firstName}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label htmlFor="lastName" className="form-label">Last Name</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        id="lastName"
+                        name="lastName" 
+                        value={formData.lastName}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="row mb-3">
+                    <div className="col-md-6">
+                      <label htmlFor="email" className="form-label">Email</label>
+                      <input 
+                        type="email" 
+                        className="form-control" 
+                        id="email"
+                        name="email" 
+                        value={formData.email}
+                        onChange={handleChange}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label htmlFor="phone" className="form-label">Phone</label>
+                      <input 
+                        type="tel" 
+                        className="form-control" 
+                        id="phone"
+                        name="phone" 
+                        value={formData.phone}
+                        onChange={handleChange}
+                      />
+                    </div>
+                  </div>
+                  
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={loading}
+                  >
+                    {loading ? 'Updating...' : 'Update Profile'}
+                  </button>
+                </form>
+              </div>
+            </div>
+            
+            <div className="card border-0 shadow-sm mb-4" id="addresses-section">
+              <div className="card-header bg-white d-flex justify-content-between align-items-center">
+                <h5 className="mb-0 fw-bold">My Addresses</h5>
+                {!showAddressForm && (
+                  <button 
+                    onClick={() => {
+                      setShowAddressForm(true);
+                      setAddressData({
+                        street: '',
+                        city: '',
+                        state: '',
+                        zip: '',
+                        country: '',
+                      });
+                      setEditAddressIndex(-1);
+                    }} 
+                    className="btn btn-outline-primary btn-sm"
+                  >
+                    <FaPlus className="me-1" /> Add Address
+                  </button>
+                )}
+              </div>
+              <div className="card-body">
+                {showAddressForm && (
+                  <div className="mb-4 border p-3 rounded bg-light">
+                    <h6 className="mb-3">{editAddressIndex >= 0 ? 'Edit Address' : 'Add New Address'}</h6>
+                    <form onSubmit={handleAddressSubmit}>
+                      <div className="mb-3">
+                        <label htmlFor="street" className="form-label">Street Address*</label>
+                        <input 
+                          type="text" 
+                          className="form-control" 
+                          id="street"
+                          name="street"
+                          value={addressData.street}
+                          onChange={handleAddressChange}
+                          required
+                        />
+                      </div>
+                      <div className="row mb-3">
+                        <div className="col-md-6">
+                          <label htmlFor="city" className="form-label">City*</label>
                           <input 
                             type="text" 
                             className="form-control" 
-                            id="street"
-                            name="street"
-                            value={addressData.street}
+                            id="city"
+                            name="city"
+                            value={addressData.city}
                             onChange={handleAddressChange}
                             required
                           />
                         </div>
-                        <div className="row mb-3">
-                          <div className="col-md-6">
-                            <label htmlFor="city" className="form-label">City*</label>
-                            <input 
-                              type="text" 
-                              className="form-control" 
-                              id="city"
-                              name="city"
-                              value={addressData.city}
-                              onChange={handleAddressChange}
-                              required
-                            />
-                          </div>
-                          <div className="col-md-6">
-                            <label htmlFor="state" className="form-label">State/Province*</label>
-                            <input 
-                              type="text" 
-                              className="form-control" 
-                              id="state"
-                              name="state"
-                              value={addressData.state}
-                              onChange={handleAddressChange}
-                              required
-                            />
-                          </div>
+                        <div className="col-md-6">
+                          <label htmlFor="state" className="form-label">State/Province*</label>
+                          <input 
+                            type="text" 
+                            className="form-control" 
+                            id="state"
+                            name="state"
+                            value={addressData.state}
+                            onChange={handleAddressChange}
+                            required
+                          />
                         </div>
-                        <div className="row mb-3">
-                          <div className="col-md-6">
-                            <label htmlFor="zip" className="form-label">Postal/Zip Code*</label>
-                            <input 
-                              type="text" 
-                              className="form-control" 
-                              id="zip"
-                              name="zip"
-                              value={addressData.zip}
-                              onChange={handleAddressChange}
-                              required
-                            />
-                          </div>
-                          <div className="col-md-6">
-                            <label htmlFor="country" className="form-label">Country*</label>
-                            <input 
-                              type="text" 
-                              className="form-control" 
-                              id="country"
-                              name="country"
-                              value={addressData.country}
-                              onChange={handleAddressChange}
-                              required
-                            />
-                          </div>
+                      </div>
+                      <div className="row mb-3">
+                        <div className="col-md-6">
+                          <label htmlFor="zip" className="form-label">Postal/Zip Code*</label>
+                          <input 
+                            type="text" 
+                            className="form-control" 
+                            id="zip"
+                            name="zip"
+                            value={addressData.zip}
+                            onChange={handleAddressChange}
+                            required
+                          />
                         </div>
-                        <div className="d-flex justify-content-end">
-                          <button 
-                            type="button" 
-                            className="btn btn-outline-secondary me-2"
-                            onClick={handleCancelAddressEdit}
-                          >
-                            Cancel
-                          </button>
-                          <button 
-                            type="submit" 
-                            className="btn btn-primary"
-                            disabled={loading}
-                          >
-                            {loading ? 'Saving...' : editAddressIndex >= 0 ? 'Update Address' : 'Save Address'}
-                          </button>
+                        <div className="col-md-6">
+                          <label htmlFor="country" className="form-label">Country*</label>
+                          <input 
+                            type="text" 
+                            className="form-control" 
+                            id="country"
+                            name="country"
+                            value={addressData.country}
+                            onChange={handleAddressChange}
+                            required
+                          />
                         </div>
-                      </form>
-                    </div>
-                  )}
+                      </div>
+                      <div className="d-flex justify-content-end">
+                        <button 
+                          type="button" 
+                          className="btn btn-outline-secondary me-2"
+                          onClick={handleCancelAddressEdit}
+                        >
+                          Cancel
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="btn btn-primary"
+                          disabled={loading}
+                        >
+                          {loading ? 'Saving...' : editAddressIndex >= 0 ? 'Update Address' : 'Save Address'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                )}
 
-                  {!userDetails?.addresses || userDetails?.addresses.length === 0 ? (
-                    <div className="alert alert-info">
-                      You don't have any saved addresses yet. Add an address to make checkout faster.
-                    </div>
-                  ) : (
-                    <div className="row">
-                      {userDetails?.addresses.map((address, index) => (
-                        <div className="col-md-6 mb-3" key={index}>
-                          <div className="card h-100 border">
-                            <div className="card-body">
-                              <div className="d-flex justify-content-between align-items-start mb-2">
-                                <h6 className="fw-bold mb-0">Address {index + 1}</h6>
-                                <div>
-                                  <button 
-                                    onClick={() => handleEditAddress(index)}
-                                    className="btn btn-sm btn-link text-primary p-0 me-2"
-                                  >
-                                    <FaEdit />
-                                  </button>
-                                  <button 
-                                    onClick={() => handleDeleteAddress(index)}
-                                    className="btn btn-sm btn-link text-danger p-0"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
+                {!userDetails?.addresses || userDetails?.addresses.length === 0 ? (
+                  <div className="alert alert-info">
+                    You don't have any saved addresses yet. Add an address to make checkout faster.
+                  </div>
+                ) : (
+                  <div className="row">
+                    {userDetails?.addresses.map((address, index) => (
+                      <div className="col-md-6 mb-3" key={index}>
+                        <div className="card h-100 border">
+                          <div className="card-body">
+                            <div className="d-flex justify-content-between align-items-start mb-2">
+                              <h6 className="fw-bold mb-0">Address {index + 1}</h6>
+                              <div>
+                                <button 
+                                  onClick={() => handleEditAddress(index)}
+                                  className="btn btn-sm btn-link text-primary p-0 me-2"
+                                >
+                                  <FaEdit />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteAddress(index)}
+                                  className="btn btn-sm btn-link text-danger p-0"
+                                >
+                                  <FaTrash />
+                                </button>
                               </div>
-                              <p className="mb-1">{address.street}</p>
-                              <p className="mb-1">
-                                {address.city}, {address.state} {address.zip}
-                              </p>
-                              <p className="mb-0">{address.country}</p>
                             </div>
-                            <div className="card-footer bg-light">
-                              <button 
-                                className="btn btn-sm btn-outline-primary w-100"
-                                onClick={() => {
-                                  // Save to localStorage for checkout
-                                  localStorage.setItem('shippingAddress', JSON.stringify(address));
-                                  toast.success('Address selected for checkout');
-                                }}
-                              >
-                                Use for Shipping
-                              </button>
-                            </div>
+                            <p className="mb-1">{address.street}</p>
+                            <p className="mb-1">
+                              {address.city}, {address.state} {address.zip}
+                            </p>
+                            <p className="mb-0">{address.country}</p>
+                          </div>
+                          <div className="card-footer bg-light">
+                            <button 
+                              className="btn btn-sm btn-outline-primary w-100"
+                              onClick={() => {
+                                // Save to localStorage for checkout
+                                localStorage.setItem('shippingAddress', JSON.stringify(address));
+                                toast.success('Address selected for checkout');
+                              }}
+                            >
+                              Use for Shipping
+                            </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-              
-              <div className="card border-0 shadow-sm" id="security-section">
-                <div className="card-header bg-white">
-                  <h5 className="mb-0 fw-bold">Security</h5>
-                </div>
-                <div className="card-body">
-                  <form onSubmit={handlePasswordSubmit}>
-                    <div className="mb-3">
-                      <label htmlFor="currentPassword" className="form-label">Current Password</label>
-                      <div className="input-group">
-                        <input 
-                          type={passwordVisibility.currentPassword ? "text" : "password"} 
-                          className="form-control" 
-                          id="currentPassword"
-                          name="currentPassword" 
-                          value={passwordData.currentPassword}
-                          onChange={handlePasswordChange}
-                        />
-                        <button 
-                          className="btn btn-outline-secondary" 
-                          type="button"
-                          onClick={() => togglePasswordVisibility('currentPassword')}
-                        >
-                          {passwordVisibility.currentPassword ? <FaEyeSlash /> : <FaEye />}
-                        </button>
-                      </div>
+            </div>
+            
+            <div className="card border-0 shadow-sm" id="security-section">
+              <div className="card-header bg-white">
+                <h5 className="mb-0 fw-bold">Security</h5>
+              </div>
+              <div className="card-body">
+                <form onSubmit={handlePasswordSubmit}>
+                  <div className="mb-3">
+                    <label htmlFor="currentPassword" className="form-label">Current Password</label>
+                    <div className="input-group">
+                      <input 
+                        type={passwordVisibility.currentPassword ? "text" : "password"} 
+                        className="form-control" 
+                        id="currentPassword"
+                        name="currentPassword" 
+                        value={passwordData.currentPassword}
+                        onChange={handlePasswordChange}
+                      />
+                      <button 
+                        className="btn btn-outline-secondary" 
+                        type="button"
+                        onClick={() => togglePasswordVisibility('currentPassword')}
+                      >
+                        {passwordVisibility.currentPassword ? <FaEyeSlash /> : <FaEye />}
+                      </button>
                     </div>
-                    <div className="mb-3">
-                      <label htmlFor="newPassword" className="form-label">New Password</label>
-                      <div className="input-group">
-                        <input 
-                          type={passwordVisibility.newPassword ? "text" : "password"} 
-                          className="form-control" 
-                          id="newPassword"
-                          name="newPassword" 
-                          value={passwordData.newPassword}
-                          onChange={handlePasswordChange}
-                        />
-                        <button 
-                          className="btn btn-outline-secondary" 
-                          type="button"
-                          onClick={() => togglePasswordVisibility('newPassword')}
-                        >
-                          {passwordVisibility.newPassword ? <FaEyeSlash /> : <FaEye />}
-                        </button>
-                      </div>
-                      <div className="form-text">Password must be at least 8 characters long</div>
+                  </div>
+                  <div className="mb-3">
+                    <label htmlFor="newPassword" className="form-label">New Password</label>
+                    <div className="input-group">
+                      <input 
+                        type={passwordVisibility.newPassword ? "text" : "password"} 
+                        className="form-control" 
+                        id="newPassword"
+                        name="newPassword" 
+                        value={passwordData.newPassword}
+                        onChange={handlePasswordChange}
+                      />
+                      <button 
+                        className="btn btn-outline-secondary" 
+                        type="button"
+                        onClick={() => togglePasswordVisibility('newPassword')}
+                      >
+                        {passwordVisibility.newPassword ? <FaEyeSlash /> : <FaEye />}
+                      </button>
                     </div>
-                    <div className="mb-3">
-                      <label htmlFor="confirmPassword" className="form-label">Confirm New Password</label>
-                      <div className="input-group">
-                        <input 
-                          type={passwordVisibility.confirmPassword ? "text" : "password"} 
-                          className="form-control" 
-                          id="confirmPassword"
-                          name="confirmPassword" 
-                          value={passwordData.confirmPassword}
-                          onChange={handlePasswordChange}
-                        />
-                        <button 
-                          className="btn btn-outline-secondary" 
-                          type="button"
-                          onClick={() => togglePasswordVisibility('confirmPassword')}
-                        >
-                          {passwordVisibility.confirmPassword ? <FaEyeSlash /> : <FaEye />}
-                        </button>
-                      </div>
+                    <div className="form-text">Password must be at least 8 characters long</div>
+                  </div>
+                  <div className="mb-3">
+                    <label htmlFor="confirmPassword" className="form-label">Confirm New Password</label>
+                    <div className="input-group">
+                      <input 
+                        type={passwordVisibility.confirmPassword ? "text" : "password"} 
+                        className="form-control" 
+                        id="confirmPassword"
+                        name="confirmPassword" 
+                        value={passwordData.confirmPassword}
+                        onChange={handlePasswordChange}
+                      />
+                      <button 
+                        className="btn btn-outline-secondary" 
+                        type="button"
+                        onClick={() => togglePasswordVisibility('confirmPassword')}
+                      >
+                        {passwordVisibility.confirmPassword ? <FaEyeSlash /> : <FaEye />}
+                      </button>
                     </div>
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary"
-                      disabled={loading}
-                    >
-                      {loading ? 'Updating...' : 'Change Password'}
-                    </button>
-                  </form>
-                </div>
+                  </div>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary"
+                    disabled={loading}
+                  >
+                    {loading ? 'Updating...' : 'Change Password'}
+                  </button>
+                </form>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
       <Modal show={showAvatarModal} onHide={() => setShowAvatarModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Choose Profile Picture</Modal.Title>
@@ -1041,7 +1110,7 @@ function Profile() {
           </Button>
         </Modal.Footer>
       </Modal>
-    </>
+    </div>
   );
 }
 
