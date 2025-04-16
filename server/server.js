@@ -24,29 +24,17 @@ dotenv.config();
 // Initialize express app
 const app = express();
 
-// Middleware
+// Simplified CORS configuration for deployment
 app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl requests)
-    if(!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'https://peakhive.vercel.app',
-      'https://www.peakhive.vercel.app'
-    ];
-    
-    if(allowedOrigins.indexOf(origin) !== -1 || !origin) {
-      callback(null, true);
-    } else {
-      console.log('Origin not allowed by CORS:', origin);
-      callback(null, true); // Still allow for now, while debugging
-    }
-  },
+  origin: '*', // Allow all origins temporarily to fix CORS issues
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
+
+// Add preflight OPTIONS handler for all routes
+app.options('*', cors());
+
 app.use(express.json());
 
 // MongoDB Connection
@@ -65,9 +53,11 @@ console.log('============================================');
 mongoose.connect(MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 15000,
-  socketTimeoutMS: 45000,
-  family: 4
+  serverSelectionTimeoutMS: 30000, // Increased timeout
+  socketTimeoutMS: 60000, // Increased timeout
+  family: 4,
+  retryWrites: true,
+  w: 'majority'
 })
   .then(() => {
     console.log('MongoDB Connected Successfully');
@@ -81,6 +71,7 @@ mongoose.connect(MONGO_URI, {
   .catch((err) => {
     console.error('MongoDB Connection Error:', err);
     console.log('Please check if MongoDB Atlas is accessible and credentials are correct');
+    console.log('Connection string used (masked):', MONGO_URI ? MONGO_URI.substring(0, 20) + '...' : 'undefined');
     process.exit(1); // Exit the process if MongoDB connection fails
   });
 
@@ -112,15 +103,29 @@ app.get('/', (req, res) => {
   res.json({ message: 'PeakHive API is running' });
 });
 
+// Test route for health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok',
+    mongodb: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Error handling middleware
 app.use((req, res, next) => {
-  res.status(404).json({ message: 'Route not found' });
+  res.status(404).json({ message: 'Route not found', path: req.originalUrl });
 });
 
 app.use((err, req, res, next) => {
   console.error('Server error:', err.stack);
+  
+  // More detailed error response in all environments for debugging
   res.status(500).json({
     message: 'Server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    error: err.message,
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
   });
 }); 

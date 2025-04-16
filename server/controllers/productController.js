@@ -5,12 +5,23 @@ import Wishlist from '../models/wishlistModel.js';
 import Review from '../models/reviewModel.js';
 import asyncHandler from 'express-async-handler';
 import logger from '../utils/logger.js';
+import process from 'process';
 
 // @desc    Fetch all products
 // @route   GET /api/products
 // @access  Public
 const getProducts = async (req, res) => {
   try {
+    // Log request parameters for debugging
+    console.log('GET /api/products params:', {
+      page: req.query.page,
+      category: req.query.category,
+      keyword: req.query.keyword,
+      minPrice: req.query.minPrice,
+      maxPrice: req.query.maxPrice,
+      sort: req.query.sort
+    });
+    
     const pageSize = 10;
     const page = Number(req.query.page) || 1;
     
@@ -20,7 +31,7 @@ const getProducts = async (req, res) => {
     const minPrice = Number(req.query.minPrice) || 0;
     const maxPrice = Number(req.query.maxPrice) || 9999999;
     
-    // Filter query
+    // Filter query with safer initialization
     const filter = {};
     
     if (category && category !== 'all') {
@@ -48,22 +59,47 @@ const getProducts = async (req, res) => {
       sortOption.createdAt = -1;
     }
     
-    // Execute query
-    const count = await Product.countDocuments(filter);
-    const products = await Product.find(filter)
-      .sort(sortOption)
-      .limit(pageSize)
-      .skip(pageSize * (page - 1));
+    // Database operations with explicit try/catch blocks
+    let count;
+    try {
+      count = await Product.countDocuments(filter);
+      console.log(`Found ${count} products matching filter`);
+    } catch (countError) {
+      console.error('Error counting products:', countError);
+      return res.status(500).json({ 
+        message: 'Error counting products', 
+        error: countError.message 
+      });
+    }
     
-    res.json({
+    let products;
+    try {
+      products = await Product.find(filter)
+        .sort(sortOption)
+        .limit(pageSize)
+        .skip(pageSize * (page - 1));
+      console.log(`Retrieved ${products.length} products for page ${page}`);
+    } catch (findError) {
+      console.error('Error finding products:', findError);
+      return res.status(500).json({ 
+        message: 'Error retrieving products', 
+        error: findError.message 
+      });
+    }
+    
+    return res.json({
       products,
       page,
       pages: Math.ceil(count / pageSize),
       totalProducts: count
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server Error' });
+    console.error('Unexpected error in getProducts:', error);
+    return res.status(500).json({ 
+      message: 'Server Error', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 };
 
