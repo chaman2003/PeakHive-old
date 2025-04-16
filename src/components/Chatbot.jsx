@@ -37,6 +37,7 @@ const Chatbot = () => {
     setIsLoading(true);
 
     try {
+      // Simplified request format for gemini-1.5-flash
       const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
         method: 'POST',
         headers: {
@@ -45,46 +46,31 @@ const Chatbot = () => {
         body: JSON.stringify({
           contents: [
             {
-              role: "user",
               parts: [
-                {
-                  text: `You are a helpful shopping assistant for PeakHive e-commerce store. Answer politely and concisely. The user asks: ${userMessage}`
-                }
+                { text: `You are a helpful shopping assistant for PeakHive e-commerce store. Answer politely and concisely. The user asks: ${userMessage}` }
               ]
             }
           ],
           generationConfig: {
             temperature: 0.2,
-            topK: 32,
-            topP: 0.8,
-            maxOutputTokens: 800,
-            responseMimeType: "text/plain"
-          },
-          safetySettings: [
-            {
-              category: "HARM_CATEGORY_HARASSMENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_HATE_SPEECH",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            },
-            {
-              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
-              threshold: "BLOCK_MEDIUM_AND_ABOVE"
-            }
-          ]
+            maxOutputTokens: 800
+          }
         })
       });
 
       const data = await response.json();
       
-      if (data.candidates && data.candidates[0].content.parts[0].text) {
+      // Log the full response for debugging
+      console.log('Gemini API response:', data);
+      
+      if (data.error) {
+        console.error('API error:', data.error);
+        throw new Error(data.error.message || 'API returned an error');
+      }
+      
+      if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) {
         const botResponse = data.candidates[0].content.parts[0].text;
+        // Process response to remove markdown formatting (**, ##, etc.)
         const cleanResponse = botResponse
           .replace(/\*\*(.*?)\*\*/g, '$1')
           .replace(/##(.*?)(?=\n|$)/g, '$1')
@@ -100,12 +86,12 @@ const Chatbot = () => {
           content: "I'm sorry, I can't respond to that query. Please try asking something related to our products or services." 
         }]);
       } else {
-        console.error('Unexpected API response:', data);
-        throw new Error('Invalid response from API');
+        console.error('Unexpected API response structure:', data);
+        throw new Error('Invalid response format from API');
       }
     } catch (error) {
-      console.error('Error:', error);
-      toast.error('Sorry, I encountered an error. Please try again.');
+      console.error('Error during API call:', error);
+      toast.error(`Error: ${error.message || 'Something went wrong'}`);
       setMessages(prev => [...prev, { 
         role: 'assistant', 
         content: 'I apologize, but I encountered an error. Could you please rephrase your question?' 
