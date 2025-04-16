@@ -9,16 +9,35 @@ import generateToken from '../utils/generateToken.js';
 // @access  Public
 const registerUser = async (req, res) => {
   try {
+    console.log('Register request received:', JSON.stringify(req.body));
+    
     const { firstName, lastName, email, password } = req.body;
+    
+    // Validate required fields
+    if (!firstName || !lastName || !email || !password) {
+      console.error('Missing required fields:', { firstName: !!firstName, lastName: !!lastName, email: !!email, password: !!password });
+      return res.status(400).json({ 
+        message: 'All fields are required',
+        received: { firstName: !!firstName, lastName: !!lastName, email: !!email, password: !!password }
+      });
+    }
+    
+    // Validate password length (matches User model requirement)
+    if (password.length < 8) {
+      console.error('Password too short');
+      return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
 
     // Check if user already exists
     const userExists = await User.findOne({ email });
 
     if (userExists) {
+      console.log('User already exists:', email);
       return res.status(400).json({ message: 'User already exists' });
     }
 
     // Create new user
+    console.log('Creating new user:', { firstName, lastName, email });
     const user = await User.create({
       firstName,
       lastName,
@@ -27,6 +46,7 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
+      console.log('User created successfully:', user._id);
       res.status(201).json({
         _id: user._id,
         firstName: user.firstName,
@@ -37,11 +57,23 @@ const registerUser = async (req, res) => {
         token: generateToken(user._id),
       });
     } else {
+      console.error('User creation failed with no error');
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server Error' });
+    console.error('Error in registerUser:', error);
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    if (error.name === 'ValidationError') {
+      // Mongoose validation error
+      const messages = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({ message: messages.join(', ') });
+    }
+    res.status(500).json({ 
+      message: 'Server Error', 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'production' ? '🥞' : error.stack 
+    });
   }
 };
 

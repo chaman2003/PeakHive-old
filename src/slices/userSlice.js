@@ -35,7 +35,22 @@ export const register = createAsyncThunk(
   'users/register',
   async ({ firstName, lastName, email, password }, { rejectWithValue }) => {
     try {
+      console.log('Registering user with data:', { firstName, lastName, email, passwordLength: password ? password.length : 0 });
+      
+      // Check for required fields
+      if (!firstName || !lastName || !email || !password) {
+        console.error('Missing required fields for registration');
+        return rejectWithValue('All fields are required');
+      }
+      
+      // Check password length
+      if (password.length < 8) {
+        console.error('Password too short for registration');
+        return rejectWithValue('Password must be at least 8 characters');
+      }
+      
       const { data } = await api.post('/users/register', { firstName, lastName, email, password });
+      console.log('Registration successful:', data);
       
       const tabSessionId = getTabSessionId();
       localStorage.setItem('userInfo', JSON.stringify(data));
@@ -43,6 +58,8 @@ export const register = createAsyncThunk(
       
       return data;
     } catch (error) {
+      console.error('Registration error:', error);
+      console.error('Error response:', error.response?.data);
       return rejectWithValue(
         error.response && error.response.data.message
           ? error.response.data.message
