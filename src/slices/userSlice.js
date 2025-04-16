@@ -132,21 +132,26 @@ export const updateUserProfile = createAsyncThunk(
 // Get user details
 export const getUserDetails = createAsyncThunk(
   'users/details',
-  async ({ id, useTestDb = false }, { rejectWithValue }) => {
+  async (params, { rejectWithValue }) => {
     try {
+      // Handle both object and string parameters for backward compatibility
+      const id = typeof params === 'string' ? params : params.id;
+      const useTestDb = typeof params === 'object' ? params.useTestDb : false;
+      
       // If 'profile', get the current user's profile, otherwise get user by ID
       const endpoint = id === 'profile' ? '/users/profile' : `/users/${id}`;
       
       // Add test parameter if needed
       const url = useTestDb ? `${endpoint}?test=true` : endpoint;
       
-      console.log(`Fetching user details from ${useTestDb ? 'test database' : 'regular database'}`);
+      console.log(`Fetching user details from ${url} (${useTestDb ? 'test database' : 'regular database'})`);
       
       // Make the API request
       const response = await api.get(url);
       console.log('User details API response:', {
         status: response.status,
-        data: response.data,
+        dataExists: !!response.data,
+        endpoint,
         hasToken: !!api.defaults.headers.common['Authorization']
       });
       
@@ -430,7 +435,29 @@ const userSlice = createSlice({
       })
       .addCase(getUserDetails.fulfilled, (state, action) => {
         state.loading = false;
-        state.userDetails = action.payload;
+        
+        // Handle different response structures
+        // Some endpoints return a 'user' object, others return the user data directly
+        if (action.payload && typeof action.payload === 'object') {
+          if (action.payload.user) {
+            // Response has a 'user' property, use that
+            state.userDetails = action.payload;
+          } else if (action.payload._id) {
+            // Response is the user directly, wrap it for consistency
+            state.userDetails = { user: action.payload };
+          } else {
+            // Unknown structure, store as-is
+            state.userDetails = action.payload;
+          }
+        } else {
+          state.userDetails = null;
+        }
+        
+        // Log the resulting structure for debugging
+        console.log("Updated userDetails state:", 
+                   state.userDetails ? 
+                   `Found: Has user property: ${!!state.userDetails.user}` : 
+                   "No data");
       })
       .addCase(getUserDetails.rejected, (state, action) => {
         state.loading = false;

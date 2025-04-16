@@ -272,37 +272,126 @@ const Checkout = () => {
     // Fetch user details to ensure we have the most current address information
     if (userInfo && userInfo._id) {
       console.log("Fetching latest user details for checkout...");
-      dispatch(getUserDetails('profile'));
+      dispatch(getUserDetails({ id: 'profile' }));
     }
     
-    if (userInfo) {
-      console.log("Loading addresses from userInfo:", userInfo);
+    // Try to initialize shipping address from available data
+    const initializeAddress = () => {
+      console.log("Attempting to load addresses from available data");
       
-      // Check if addresses exist and handle different data structures
-      if (userInfo.addresses) {
-        let primaryAddress;
+      // Try to get address from userDetails first (most up-to-date)
+      let addressFound = false;
+      
+      if (userDetails) {
+        console.log("Looking for addresses in userDetails");
         
-        if (Array.isArray(userInfo.addresses) && userInfo.addresses.length > 0) {
-          // If it's an array, use the first address
-          primaryAddress = userInfo.addresses[0];
-        } else if (typeof userInfo.addresses === 'object' && Object.keys(userInfo.addresses).length > 0) {
-          // If it's an object, get the first address value
-          primaryAddress = Object.values(userInfo.addresses)[0];
+        // Check userDetails.user.addresses
+        if (userDetails.user && userDetails.user.addresses) {
+          const addresses = userDetails.user.addresses;
+          
+          if (Array.isArray(addresses) && addresses.length > 0) {
+            // Use first address in array
+            const primaryAddress = addresses[0];
+            setShippingAddress({
+              street: primaryAddress.street || '',
+              city: primaryAddress.city || '',
+              state: primaryAddress.state || '',
+              zip: primaryAddress.zip || '',
+              country: primaryAddress.country || 'United States'
+            });
+            console.log("Found address in userDetails.user.addresses array");
+            addressFound = true;
+          } else if (typeof addresses === 'object' && Object.keys(addresses).length > 0) {
+            // Use first address in object
+            const primaryAddress = Object.values(addresses)[0];
+            setShippingAddress({
+              street: primaryAddress.street || '',
+              city: primaryAddress.city || '',
+              state: primaryAddress.state || '',
+              zip: primaryAddress.zip || '',
+              country: primaryAddress.country || 'United States'
+            });
+            console.log("Found address in userDetails.user.addresses object");
+            addressFound = true;
+          }
         }
         
-        if (primaryAddress) {
-          console.log("Setting primary address:", primaryAddress);
-          setShippingAddress({
-            street: primaryAddress.street || '',
-            city: primaryAddress.city || '',
-            state: primaryAddress.state || '',
-            zip: primaryAddress.zip || '',
-            country: primaryAddress.country || 'United States'
-          });
+        // Check userDetails.addresses
+        if (!addressFound && userDetails.addresses) {
+          const addresses = userDetails.addresses;
+          
+          if (Array.isArray(addresses) && addresses.length > 0) {
+            // Use first address in array
+            const primaryAddress = addresses[0];
+            setShippingAddress({
+              street: primaryAddress.street || '',
+              city: primaryAddress.city || '',
+              state: primaryAddress.state || '',
+              zip: primaryAddress.zip || '',
+              country: primaryAddress.country || 'United States'
+            });
+            console.log("Found address in userDetails.addresses array");
+            addressFound = true;
+          } else if (typeof addresses === 'object' && Object.keys(addresses).length > 0) {
+            // Use first address in object
+            const primaryAddress = Object.values(addresses)[0];
+            setShippingAddress({
+              street: primaryAddress.street || '',
+              city: primaryAddress.city || '',
+              state: primaryAddress.state || '',
+              zip: primaryAddress.zip || '',
+              country: primaryAddress.country || 'United States'
+            });
+            console.log("Found address in userDetails.addresses object");
+            addressFound = true;
+          }
         }
       }
-    }
-  }, [userInfo, dispatch]);
+      
+      // Fallback to userInfo if no address found in userDetails
+      if (!addressFound && userInfo) {
+        console.log("Looking for addresses in userInfo");
+        
+        if (userInfo.addresses) {
+          const addresses = userInfo.addresses;
+          
+          if (Array.isArray(addresses) && addresses.length > 0) {
+            // Use first address in array
+            const primaryAddress = addresses[0];
+            setShippingAddress({
+              street: primaryAddress.street || '',
+              city: primaryAddress.city || '',
+              state: primaryAddress.state || '',
+              zip: primaryAddress.zip || '',
+              country: primaryAddress.country || 'United States'
+            });
+            console.log("Found address in userInfo.addresses array");
+            addressFound = true;
+          } else if (typeof addresses === 'object' && Object.keys(addresses).length > 0) {
+            // Use first address in object
+            const primaryAddress = Object.values(addresses)[0];
+            setShippingAddress({
+              street: primaryAddress.street || '',
+              city: primaryAddress.city || '',
+              state: primaryAddress.state || '',
+              zip: primaryAddress.zip || '',
+              country: primaryAddress.country || 'United States'
+            });
+            console.log("Found address in userInfo.addresses object");
+            addressFound = true;
+          }
+        }
+      }
+      
+      if (!addressFound) {
+        console.log("No addresses found in any source");
+      }
+    };
+    
+    // Call the address initialization function
+    initializeAddress();
+    
+  }, [userInfo, userDetails, dispatch]);
   
   // Handle successful order placement - modify to prevent automatic payment processing
   useEffect(() => {
@@ -417,16 +506,28 @@ const Checkout = () => {
     // Try to get addresses from multiple possible sources
     let addressesArray = [];
     
-    // First check userDetails.user.addresses (from getUserDetails API call)
-    if (userDetails && userDetails.user && userDetails.user.addresses) {
-      if (Array.isArray(userDetails.user.addresses)) {
-        addressesArray = userDetails.user.addresses;
-      } else if (typeof userDetails.user.addresses === 'object') {
-        addressesArray = Object.values(userDetails.user.addresses);
+    // Check different possible structures for userDetails
+    if (userDetails) {
+      // Option 1: userDetails has a user property with addresses
+      if (userDetails.user && userDetails.user.addresses) {
+        if (Array.isArray(userDetails.user.addresses)) {
+          addressesArray = userDetails.user.addresses;
+        } else if (typeof userDetails.user.addresses === 'object') {
+          addressesArray = Object.values(userDetails.user.addresses);
+        }
+      } 
+      // Option 2: userDetails itself has addresses
+      else if (userDetails.addresses) {
+        if (Array.isArray(userDetails.addresses)) {
+          addressesArray = userDetails.addresses;
+        } else if (typeof userDetails.addresses === 'object') {
+          addressesArray = Object.values(userDetails.addresses);
+        }
       }
-    } 
-    // Fallback to userInfo.addresses
-    else if (userInfo && userInfo.addresses) {
+    }
+    
+    // Fallback to userInfo.addresses if no addresses in userDetails
+    if (addressesArray.length === 0 && userInfo && userInfo.addresses) {
       if (Array.isArray(userInfo.addresses)) {
         addressesArray = userInfo.addresses;
       } else if (typeof userInfo.addresses === 'object') {
@@ -445,7 +546,7 @@ const Checkout = () => {
           </h3>
           
           {/* Saved Addresses Section */}
-          {addressesArray && addressesArray.length > 0 && (
+          {addressesArray && addressesArray.length > 0 ? (
             <div className="mb-4">
               <h5 className="mb-3">Your Saved Addresses ({addressesArray.length})</h5>
               <div className="row g-3">
@@ -494,8 +595,13 @@ const Checkout = () => {
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="alert alert-info mb-4">
+              <p className="mb-0">You don't have any saved addresses. Please enter your shipping address below.</p>
+            </div>
           )}
           
+          {/* Rest of the form */}
           <form onSubmit={handleShippingSubmit}>
             <div className="mb-3">
               <label htmlFor="street" className="form-label">Street Address *</label>
