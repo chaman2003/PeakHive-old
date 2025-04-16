@@ -43,11 +43,41 @@ const Chatbot = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: `You are a helpful shopping assistant for PeakHive. The user asked: ${userMessage}. Please provide a helpful response about our products and services.`
-            }]
-          }]
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: `You are a helpful shopping assistant for PeakHive e-commerce store. Answer politely and concisely. The user asks: ${userMessage}`
+                }
+              ]
+            }
+          ],
+          generationConfig: {
+            temperature: 0.2,
+            topK: 32,
+            topP: 0.8,
+            maxOutputTokens: 800,
+            responseMimeType: "text/plain"
+          },
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_MEDIUM_AND_ABOVE"
+            }
+          ]
         })
       });
 
@@ -55,8 +85,22 @@ const Chatbot = () => {
       
       if (data.candidates && data.candidates[0].content.parts[0].text) {
         const botResponse = data.candidates[0].content.parts[0].text;
-        setMessages(prev => [...prev, { role: 'assistant', content: botResponse }]);
+        const cleanResponse = botResponse
+          .replace(/\*\*(.*?)\*\*/g, '$1')
+          .replace(/##(.*?)(?=\n|$)/g, '$1')
+          .replace(/\*(.*?)\*/g, '$1')
+          .replace(/```(.*?)```/gs, '$1')
+          .replace(/`(.*?)`/g, '$1')
+          .trim();
+        
+        setMessages(prev => [...prev, { role: 'assistant', content: cleanResponse }]);
+      } else if (data.promptFeedback && data.promptFeedback.blockReason) {
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: "I'm sorry, I can't respond to that query. Please try asking something related to our products or services." 
+        }]);
       } else {
+        console.error('Unexpected API response:', data);
         throw new Error('Invalid response from API');
       }
     } catch (error) {
