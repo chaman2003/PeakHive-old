@@ -3,6 +3,7 @@
 
 import User from '../models/User.js';
 import generateToken from '../utils/generateToken.js';
+import mongoose from 'mongoose';
 
 // @desc    Register a new user
 // @route   POST /api/users
@@ -11,7 +12,7 @@ const registerUser = async (req, res) => {
   try {
     console.log('Register request received:', JSON.stringify(req.body));
     
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, phone, password } = req.body;
     
     // Validate required fields
     if (!firstName || !lastName || !email || !password) {
@@ -37,11 +38,19 @@ const registerUser = async (req, res) => {
     }
 
     // Create new user
-    console.log('Creating new user:', { firstName, lastName, email });
+    console.log('Creating new user:', { 
+      firstName, 
+      lastName, 
+      email, 
+      hasPhone: !!phone,
+      phoneValue: phone || '[not provided]'
+    });
+    
     const user = await User.create({
       firstName,
       lastName,
       email,
+      phone,
       password,
     });
 
@@ -52,6 +61,7 @@ const registerUser = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        phone: user.phone,
         role: user.role,
         profileImage: user.profileImage,
         token: generateToken(user._id),
@@ -135,22 +145,78 @@ const getUserProfile = async (req, res) => {
       return res.status(401).json({ message: 'Not authorized, invalid token' });
     }
 
-    // User is attached to req from the protect middleware
-    const user = await User.findById(req.user._id);
-
-    if (user) {
-      res.json({
-        _id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone,
-        role: user.role,
-        profileImage: user.profileImage,
-        addresses: user.addresses,
-      });
+    // Check if test query parameter is present
+    const useTestDB = req.query.test === 'true';
+    
+    if (useTestDB) {
+      console.log('Fetching user profile from test database for user:', req.user._id);
+      
+      // Fetch from test collection
+      const userId = req.user._id;
+      try {
+        const testUser = await User.db.collection('test/users').findOne({ _id: new mongoose.Types.ObjectId(userId) });
+        
+        if (testUser) {
+          console.log('Found user in test database with fields:', Object.keys(testUser));
+          console.log('Phone from test database:', testUser.phone || '[not set]');
+          
+          res.json({
+            _id: testUser._id,
+            firstName: testUser.firstName,
+            lastName: testUser.lastName,
+            email: testUser.email,
+            phone: testUser.phone,
+            role: testUser.role,
+            profileImage: testUser.profileImage,
+            addresses: testUser.addresses,
+          });
+        } else {
+          // If not found in test DB, try regular DB
+          console.log('User not found in test DB, checking regular DB');
+          const user = await User.findById(req.user._id);
+          
+          if (user) {
+            console.log('Found user in regular database');
+            console.log('Phone from regular database:', user.phone || '[not set]');
+            
+            res.json({
+              _id: user._id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              email: user.email,
+              phone: user.phone,
+              role: user.role,
+              profileImage: user.profileImage,
+              addresses: user.addresses,
+            });
+          } else {
+            res.status(404).json({ message: 'User not found in any database' });
+          }
+        }
+      } catch (error) {
+        console.error('Error querying test database:', error);
+        res.status(500).json({ message: 'Error accessing test database' });
+      }
     } else {
-      res.status(404).json({ message: 'User not found' });
+      // Regular flow - fetch from normal collection
+      const user = await User.findById(req.user._id);
+
+      if (user) {
+        console.log('Regular profile fetch - phone:', user.phone || '[not set]');
+        
+        res.json({
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          profileImage: user.profileImage,
+          addresses: user.addresses,
+        });
+      } else {
+        res.status(404).json({ message: 'User not found' });
+      }
     }
   } catch (error) {
     console.error('Error in getUserProfile:', error);
@@ -175,7 +241,7 @@ const updateUserProfile = async (req, res) => {
       user.firstName = req.body.firstName || user.firstName;
       user.lastName = req.body.lastName || user.lastName;
       user.email = req.body.email || user.email;
-      user.phone = req.body.phone || user.phone;
+      user.phone = req.body.phone !== undefined ? req.body.phone : user.phone;
       user.profileImage = req.body.profileImage || user.profileImage;
 
       // Handle address updates if present
@@ -406,11 +472,28 @@ const updateUser = async (req, res) => {
     const user = await User.findById(req.params.id);
 
     if (user) {
+      // Log all incoming update fields
+      console.log('Updating user with ID:', req.params.id);
+      console.log('Update data received:', {
+        firstName: req.body.firstName || '[unchanged]',
+        lastName: req.body.lastName || '[unchanged]',
+        email: req.body.email || '[unchanged]',
+        role: req.body.role || '[unchanged]',
+        phone: req.body.phone || '[unchanged]',
+        profileImage: req.body.profileImage ? '[new image]' : '[unchanged]',
+        hasAddresses: req.body.addresses ? 'yes' : 'no'
+      });
+      
+      // Log phone number change specifically 
+      if (req.body.phone !== undefined) {
+        console.log(`Phone number update: "${user.phone}" -> "${req.body.phone}"`);
+      }
+
       user.firstName = req.body.firstName || user.firstName;
       user.lastName = req.body.lastName || user.lastName;
       user.email = req.body.email || user.email;
       user.role = req.body.role || user.role;
-      user.phone = req.body.phone || user.phone;
+      user.phone = req.body.phone !== undefined ? req.body.phone : user.phone;
       user.profileImage = req.body.profileImage || user.profileImage;
       
       // Handle address updates if present
@@ -419,6 +502,7 @@ const updateUser = async (req, res) => {
       }
 
       const updatedUser = await user.save();
+      console.log('User updated successfully:', updatedUser._id);
 
       res.json({
         _id: updatedUser._id,
@@ -434,8 +518,8 @@ const updateUser = async (req, res) => {
       res.status(404).json({ message: 'User not found' });
     }
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Server Error' });
+    console.error('Error updating user:', error);
+    res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
 

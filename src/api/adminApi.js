@@ -206,6 +206,10 @@ export const updateOrderStatus = async (orderId, statusData) => {
 export const updateUser = async (userId, userData) => {
   try {
     console.log('Updating user with data:', userData);
+    // Log phone number specifically for debugging
+    if (userData.phone) {
+      console.log('Phone number being updated:', userData.phone);
+    }
     const response = await api.put(`/users/${userId}`, userData);
     console.log('User update response:', response.data);
     return response.data;
@@ -277,11 +281,22 @@ export const fetchOrderById = async (orderId) => {
 // Register a new user (admin only)
 export const register = async (userData) => {
   try {
+    console.log('Registering new user with data:', {
+      ...userData,
+      password: userData.password ? '********' : undefined // Hide password in logs
+    });
+    // Log phone number specifically for debugging
+    if (userData.phone) {
+      console.log('Phone number being registered:', userData.phone);
+    }
     const response = await api.post('/users', userData);
+    console.log('User registration successful:', response.data._id);
     return response.data;
   } catch (error) {
     console.error('Error registering user:', error);
-    throw error;
+    // Extract detailed error message from response if available
+    const errorMsg = error.response?.data?.message || 'Failed to register user';
+    throw new Error(errorMsg);
   }
 };
 

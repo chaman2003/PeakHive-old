@@ -9,6 +9,7 @@ function Signup() {
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     agreeTerms: false
@@ -58,6 +59,7 @@ function Signup() {
       firstName: formData.firstName,
       lastName: formData.lastName,
       email: formData.email,
+      phone: formData.phone,
       password: formData.password
     }));
   };
@@ -116,6 +118,20 @@ function Signup() {
                     onChange={handleChange}
                     required
                   />
+                </div>
+                
+                <div className="mb-3">
+                  <label htmlFor="phone" className="form-label">Phone Number</label>
+                  <input 
+                    type="tel" 
+                    className="form-control" 
+                    id="phone" 
+                    name="phone"
+                    placeholder="+1 (123) 456-7890"
+                    value={formData.phone}
+                    onChange={handleChange}
+                  />
+                  <div className="form-text">Optional - Enter a phone number for account recovery</div>
                 </div>
                 
                 <div className="mb-3">

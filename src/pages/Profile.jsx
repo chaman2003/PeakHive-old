@@ -68,7 +68,8 @@ function Profile() {
     
     // If we don't have the user details, fetch them
     if (!userDetails.user || !userDetails.user.firstName) {
-      dispatch(getUserDetails('profile'));
+      // Use test database for fetching user profile
+      dispatch(getUserDetails({ id: 'profile', useTestDb: true }));
     } else if (initialLoadRef.current) {
       // Populate form with existing user data ONLY on the first load
       setFormData({
@@ -78,6 +79,7 @@ function Profile() {
         phone: userDetails.user.phone || '',
         avatar: userDetails.user.avatar || localStorage.getItem('userAvatar') || '',
       });
+      console.log('Loaded phone from user details:', userDetails.user.phone || '[not set]');
       setSelectedAvatar(userDetails.user.avatar || localStorage.getItem('userAvatar') || '');
       // Mark initial load complete
       initialLoadRef.current = false;
@@ -209,6 +211,8 @@ function Profile() {
   
   const handleProfileSubmit = (e) => {
     e.preventDefault();
+    
+    console.log('Submitting profile update with phone:', formData.phone);
     
     // Update user profile including avatar
     dispatch(updateUserProfile({

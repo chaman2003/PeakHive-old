@@ -29,8 +29,11 @@ function UserEdit() {
         setLoading(true);
         setError(null);
         
+        // Update to use the test database flag if needed
+        const useTestDb = true; // Set to true to use test database
+        
         // Use the direct fetchUserById function
-        const userData = await fetchUserById(id);
+        const userData = await fetchUserById(id, useTestDb);
         
         if (userData) {
           setFormData({
@@ -42,6 +45,7 @@ function UserEdit() {
             profileImage: userData.profileImage || '',
             addresses: userData.addresses || []
           });
+          console.log('Loaded phone from user details:', userData.phone || '[not set]');
         } else {
           setError('User not found');
         }
@@ -72,6 +76,8 @@ function UserEdit() {
     try {
       setError(null);
       setSuccess(false);
+      
+      console.log('Submitting user update with phone:', formData.phone);
       
       // Update user via API
       await updateUser(id, formData);

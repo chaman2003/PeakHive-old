@@ -33,9 +33,9 @@ const getUserInfo = () => {
 // Register user
 export const register = createAsyncThunk(
   'users/register',
-  async ({ firstName, lastName, email, password }, { rejectWithValue }) => {
+  async ({ firstName, lastName, email, phone, password }, { rejectWithValue }) => {
     try {
-      console.log('Registering user with data:', { firstName, lastName, email, passwordLength: password ? password.length : 0 });
+      console.log('Registering user with data:', { firstName, lastName, email, phone: phone || 'none', passwordLength: password ? password.length : 0 });
       
       // Check for required fields
       if (!firstName || !lastName || !email || !password) {
@@ -49,7 +49,7 @@ export const register = createAsyncThunk(
         return rejectWithValue('Password must be at least 8 characters');
       }
       
-      const { data } = await api.post('/users/register', { firstName, lastName, email, password });
+      const { data } = await api.post('/users/register', { firstName, lastName, email, phone, password });
       console.log('Registration successful:', data);
       
       const tabSessionId = getTabSessionId();
@@ -132,11 +132,16 @@ export const updateUserProfile = createAsyncThunk(
 // Get user details
 export const getUserDetails = createAsyncThunk(
   'users/details',
-  async (id, { rejectWithValue }) => {
+  async ({ id, useTestDb = false }, { rejectWithValue }) => {
     try {
       // If 'profile', get the current user's profile, otherwise get user by ID
       const endpoint = id === 'profile' ? '/users/profile' : `/users/${id}`;
-      const { data } = await api.get(endpoint);
+      
+      // Add test parameter if needed
+      const url = useTestDb ? `${endpoint}?test=true` : endpoint;
+      
+      console.log(`Fetching user details from ${useTestDb ? 'test database' : 'regular database'}`);
+      const { data } = await api.get(url);
       return data;
     } catch (error) {
       return rejectWithValue(
