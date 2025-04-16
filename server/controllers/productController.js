@@ -4,7 +4,6 @@ import Cart from '../models/Cart.js';
 import Wishlist from '../models/Wishlist.js';
 import Review from '../models/Review.js';
 import asyncHandler from 'express-async-handler';
-import logger from '../utils/logger.js';
 import process from 'process';
 
 // @desc    Fetch all products
@@ -302,7 +301,7 @@ const bulkCreateProducts = asyncHandler(async (req, res) => {
     throw new Error('No valid products data provided');
   }
 
-  logger.info(`Attempting to create ${products.length} products in bulk`);
+  console.log(`[INFO] Attempting to create ${products.length} products in bulk`);
   
   try {
     // Validate all products before insertion
@@ -333,7 +332,7 @@ const bulkCreateProducts = asyncHandler(async (req, res) => {
     // Use insertMany for bulk insertion
     const createdProducts = await Product.insertMany(productsToInsert);
     
-    logger.info(`Successfully created ${createdProducts.length} products in bulk`);
+    console.log(`[INFO] Successfully created ${createdProducts.length} products in bulk`);
     res.status(201).json({
       success: true,
       count: createdProducts.length,
@@ -341,7 +340,7 @@ const bulkCreateProducts = asyncHandler(async (req, res) => {
     });
     
   } catch (error) {
-    logger.error(`Bulk product creation failed: ${error.message}`);
+    console.error(`[ERROR] Bulk product creation failed: ${error.message}`);
     res.status(500);
     throw new Error(`Failed to create products in bulk: ${error.message}`);
   }
