@@ -73,6 +73,10 @@ function Profile() {
   // Add page error state
   const [pageError, setPageError] = useState(null);
   
+  // Add request tracking state
+  const [isFetchingDetails, setIsFetchingDetails] = useState(false);
+  const fetchAttempts = useRef(0);
+  
   // Check if user is logged in
   useEffect(() => {
     // Log current auth state
@@ -91,22 +95,24 @@ function Profile() {
     }
   }, [userInfo, navigate]);
   
+  // Effect to fetch user details only once
   useEffect(() => {
-    // Track if this is an actual update rather than initial load
-    const isRealUpdate = updateSuccess && !initialLoadRef.current;
-    
-    // Debug logs
-    console.log("Profile component state:", {
-      userDetails,
-      loading,
-      error,
-      formData,
-      initialLoad: initialLoadRef.current
-    });
-    
-    // If we don't have the user details, fetch them
-    if (userInfo && (!userDetails || !userDetails.firstName)) {
-      console.log("Fetching user details because missing data");
+    // Only fetch user details if:
+    // 1. User is logged in
+    // 2. We don't have user details yet
+    // 3. We're not already fetching
+    // 4. We haven't tried too many times (prevent infinite loops)
+    if (userInfo && 
+        (!userDetails || !userDetails.firstName) && 
+        !isFetchingDetails &&
+        fetchAttempts.current < 3) {
+      
+      // Mark that we're fetching data and increment attempt counter
+      setIsFetchingDetails(true);
+      fetchAttempts.current += 1;
+      
+      console.log(`Fetching user details (attempt ${fetchAttempts.current})`);
+      
       try {
         // Use test database for fetching user profile 
         dispatch(getUserDetails({ id: 'profile', useTestDb: true }))
@@ -114,30 +120,52 @@ function Profile() {
           .then(data => {
             console.log("Successfully fetched user details:", data);
             setPageError(null);
+            
+            // Populate form with user data immediately after successful fetch
+            setFormData({
+              firstName: data.firstName || '',
+              lastName: data.lastName || '',
+              email: data.email || '',
+              phone: data.phone || '',
+              avatar: data.profileImage || localStorage.getItem('userAvatar') || '',
+            });
+            
+            setSelectedAvatar(data.profileImage || localStorage.getItem('userAvatar') || '');
+            
+            // Mark initial load complete
+            initialLoadRef.current = false;
+            
+            // Reset fetch state
+            setIsFetchingDetails(false);
           })
           .catch(err => {
             console.error("Error fetching user details:", err);
             setPageError("Failed to load profile data. Please try refreshing the page.");
+            setIsFetchingDetails(false);
           });
       } catch (err) {
         console.error("Exception during user details fetch:", err);
         setPageError("An unexpected error occurred. Please try logging in again.");
+        setIsFetchingDetails(false);
       }
-    } else if (initialLoadRef.current && userDetails) {
-      console.log("Populating form with user data:", userDetails);
-      // Populate form with existing user data ONLY on the first load
-      setFormData({
-        firstName: userDetails.firstName || '',
-        lastName: userDetails.lastName || '',
-        email: userDetails.email || '',
-        phone: userDetails.phone || '',
-        avatar: userDetails.profileImage || localStorage.getItem('userAvatar') || '',
-      });
-      console.log('Loaded phone from user details:', userDetails.phone || '[not set]');
-      setSelectedAvatar(userDetails.profileImage || localStorage.getItem('userAvatar') || '');
-      // Mark initial load complete
-      initialLoadRef.current = false;
     }
+  }, [dispatch, userInfo, userDetails, isFetchingDetails]);
+  
+  // Track updates to profile and handle success
+  useEffect(() => {
+    // Track if this is an actual update rather than initial load
+    const isRealUpdate = updateSuccess && !initialLoadRef.current;
+    
+    // Debug logs
+    console.log("Profile component updates:", {
+      userDetails,
+      loading,
+      error,
+      formData,
+      initialLoad: initialLoadRef.current,
+      updateSuccess,
+      isRealUpdate
+    });
     
     // Only show success message for profile data updates (not avatar)
     if (isRealUpdate) {
