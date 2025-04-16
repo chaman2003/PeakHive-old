@@ -26,7 +26,7 @@ function Home() {
   
   useEffect(() => {
     // Fetch products when component mounts
-    dispatch(listProducts({}));
+    dispatch(listProducts({ page: 1 }));
   }, [dispatch]);
 
   // Sort products to prioritize those with images and get featured products (limited to 8)

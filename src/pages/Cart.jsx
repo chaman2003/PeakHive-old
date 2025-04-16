@@ -90,10 +90,31 @@ function Cart() {
   };
   
   const handleCheckout = () => {
+    // Check if cart is empty
+    if (!cartItems || cartItems.length === 0) {
+      toast.error('Your cart is empty. Please add items before checkout.');
+      return;
+    }
+    
+    // For logged out users, redirect to login with checkout redirect
     if (!userInfo) {
+      // Store a flag indicating checkout was initiated
+      localStorage.setItem('checkoutInitiated', 'true');
       navigate('/login?redirect=checkout');
     } else {
-      navigate('/checkout');
+      // Store a flag indicating checkout was initiated
+      localStorage.setItem('checkoutInitiated', 'true');
+      // Ensure cart is synced before going to checkout
+      dispatch(syncCartWithDatabase())
+        .then(() => {
+          console.log('Cart synced successfully, proceeding to checkout');
+          navigate('/checkout');
+        })
+        .catch(error => {
+          console.error('Error syncing cart:', error);
+          // Still proceed to checkout even if sync fails
+          navigate('/checkout');
+        });
     }
   };
   

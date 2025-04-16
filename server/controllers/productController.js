@@ -11,29 +11,29 @@ import process from 'process';
 // @access  Public
 const getProducts = async (req, res) => {
   try {
-    // Log request parameters for debugging
-    console.log('GET /api/products params:', {
-      page: req.query.page,
-      category: req.query.category,
-      keyword: req.query.keyword,
-      minPrice: req.query.minPrice,
-      maxPrice: req.query.maxPrice,
-      sort: req.query.sort
-    });
-    
-    const pageSize = 10;
+    // Extract request parameters with default values
     const page = Number(req.query.page) || 1;
-    
-    // Filter options
+    const pageSize = Number(req.query.limit) || 10;
     const category = req.query.category || '';
     const keyword = req.query.keyword || '';
     const minPrice = Number(req.query.minPrice) || 0;
     const maxPrice = Number(req.query.maxPrice) || 9999999;
+    const sort = req.query.sort || '';
     
-    // Filter query with safer initialization
+    // Log request parameters with clean values
+    console.log('GET /api/products params:', {
+      page,
+      category: category || null,
+      keyword: keyword || null,
+      minPrice,
+      maxPrice,
+      sort: sort || null
+    });
+    
+    // Filter options
     const filter = {};
     
-    if (category && category !== 'all') {
+    if (category) {
       filter.category = category;
     }
     
@@ -45,7 +45,6 @@ const getProducts = async (req, res) => {
     
     // Sorting options
     const sortOption = {};
-    const sort = req.query.sort || '';
     
     if (sort === 'price-low') {
       sortOption.price = 1;

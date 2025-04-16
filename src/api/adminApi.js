@@ -69,17 +69,23 @@ export const fetchUsers = async (page = 1, limit = 10, searchTerm = '') => {
 // Fetch all products with pagination
 export const fetchProducts = async (page = 1, limit = 10, searchTerm = '', category = '') => {
   try {
-    let url = `/products?page=${page}&limit=${limit}`;
+    const params = new URLSearchParams();
     
-    // Add search parameter if provided
+    // Always include page and limit
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    
+    // Only add other parameters if they have values
     if (searchTerm) {
-      url += `&keyword=${encodeURIComponent(searchTerm)}`;
+      params.append('keyword', encodeURIComponent(searchTerm));
     }
     
-    // Add category filter if provided
-    if (category) {
-      url += `&category=${encodeURIComponent(category)}`;
+    if (category && category !== 'all') {
+      params.append('category', encodeURIComponent(category));
     }
+    
+    const url = `/products?${params.toString()}`;
+    console.log('Admin API fetching products with URL:', url);
     
     const response = await api.get(url);
     return response.data;

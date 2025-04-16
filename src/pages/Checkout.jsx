@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { createOrder, processPayment, generateInvoice, resetOrderSuccess, resetPaymentSuccess, resetInvoiceSuccess } from '../slices/orderSlice';
@@ -70,6 +70,11 @@ const Checkout = () => {
       currency: 'USD'
     }).format(amount);
   };
+  
+  // Add a state variable to track if checkout is in progress
+  const [checkoutInProgress, setCheckoutInProgress] = useState(false);
+  // Add a ref to track if the component is mounted
+  const isMounted = useRef(true);
   
   // Handle shipping form change
   const handleShippingChange = (e) => {
@@ -165,6 +170,8 @@ const Checkout = () => {
     }
     
     try {
+      // Set checkout in progress to true
+      setCheckoutInProgress(true);
       // Create order object with properly formatted items
       const orderData = {
         orderItems: cartItems.map(item => ({
@@ -192,6 +199,7 @@ const Checkout = () => {
       console.error('Error creating order:', error);
       alert('There was an error processing your order. Please try again.');
       setIsSubmitting(false);
+      setCheckoutInProgress(false);
     }
   };
   
@@ -224,19 +232,40 @@ const Checkout = () => {
     }
   }, [dispatch, order]);
   
-  // Modified: Check for empty cart but don't redirect if order was just placed or is being submitted
+  // Initialize checkout flag on component mount
+  useEffect(() => {
+    // Check if checkout was initiated from cart
+    const checkoutInitiated = localStorage.getItem('checkoutInitiated') === 'true';
+    if (checkoutInitiated) {
+      console.log('Checkout initiated from cart page');
+      setCheckoutInProgress(true);
+      // Clear the flag so it's not used again
+      localStorage.removeItem('checkoutInitiated');
+    }
+  }, []);
+  
+  // Modified: Check for empty cart but don't redirect if checkout was properly initiated
   useEffect(() => {
     if (!userInfo) {
       navigate('/login?redirect=checkout');
       return;
     }
     
-    // Only redirect for empty cart if we haven't just placed an order and not submitting
-    if ((!cartItems || cartItems.length === 0) && !orderPlaced && !success && !isSubmitting && !loading) {
-      console.log('No items in cart, redirecting to cart page');
+    // Only redirect for empty cart if checkout is not in progress
+    if ((!cartItems || cartItems.length === 0) && !orderPlaced && !success && !isSubmitting && !loading && !checkoutInProgress) {
+      // Before redirecting, do one final check for the checkout flag
+      const checkoutInitiated = localStorage.getItem('checkoutInitiated') === 'true';
+      if (checkoutInitiated) {
+        console.log('Late checkout initiation detected, setting checkout in progress');
+        setCheckoutInProgress(true);
+        localStorage.removeItem('checkoutInitiated');
+        return;
+      }
+      
+      console.log('No items in cart and checkout not initiated properly, redirecting to cart page');
       navigate('/cart');
     }
-  }, [userInfo, cartItems, navigate, orderPlaced, success, isSubmitting, loading]);
+  }, [userInfo, cartItems, navigate, orderPlaced, success, isSubmitting, loading, checkoutInProgress]);
   
   // Initialize address from user info if available and fetch user details
   useEffect(() => {
@@ -309,19 +338,30 @@ const Checkout = () => {
     }
   }, [invoiceSuccess, invoice, dispatch, orderPlaced]);
   
-  // Modified: Load cart items from localStorage on component mount
+  // Modified: Load cart items from localStorage on component mount with consideration for checkout state
   useEffect(() => {
-    // Skip this check if we're in the process of submitting or have placed an order
-    if (isSubmitting || orderPlaced || success) {
+    // Skip this check if checkout is in progress
+    if (isSubmitting || orderPlaced || success || checkoutInProgress) {
       return;
     }
     
-    const storedCartItems = localStorage.getItem('cartItems');
-    if (!storedCartItems || JSON.parse(storedCartItems).length === 0) {
-      console.log('No items in localStorage, redirecting to cart');
-      navigate('/cart');
-    }
-  }, [navigate, isSubmitting, orderPlaced, success]);
+    // Set a short delay to avoid race conditions with cart clearing operations
+    const checkCartTimer = setTimeout(() => {
+      if (!isMounted.current) return;
+      
+      const storedCartItems = localStorage.getItem('cartItems');
+      if (!storedCartItems || JSON.parse(storedCartItems).length === 0) {
+        // Only redirect if we're not already in the order process
+        if (!order && !isSubmitting && !checkoutInProgress) {
+          console.log('No items in localStorage after delay, redirecting to cart');
+          navigate('/cart');
+        }
+      }
+    }, 500); // Small delay to let other state updates complete first
+    
+    // Cleanup the timer
+    return () => clearTimeout(checkCartTimer);
+  }, [navigate, isSubmitting, orderPlaced, success, order, checkoutInProgress]);
   
   // Error handling to reset isSubmitting state
   useEffect(() => {
@@ -348,12 +388,18 @@ const Checkout = () => {
   // Add a cleanup function when component unmounts
   useEffect(() => {
     return () => {
+      // Set mounted ref to false
+      isMounted.current = false;
+      // Reset checkout state when leaving checkout page
+      if (checkoutInProgress) {
+        console.log('Checkout process interrupted - cleaning up');
+      }
       // Reset order states when leaving checkout page
       dispatch(resetOrderSuccess());
       dispatch(resetPaymentSuccess());
       dispatch(resetInvoiceSuccess());
     };
-  }, [dispatch]);
+  }, [dispatch, checkoutInProgress]);
   
   // Improve going back from invoice to confirmation
   const handleBackToConfirmation = () => {

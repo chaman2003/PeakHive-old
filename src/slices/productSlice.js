@@ -4,18 +4,35 @@ import api from '../api/index';
 // Async thunks for product actions
 export const listProducts = createAsyncThunk(
   'product/list',
-  async ({ keyword = '', page = 1, category = '', sort = '' }, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
+      // Destructure params with defaults
+      const { 
+        keyword = '', 
+        page = 1, 
+        category = '', 
+        sort = '',
+        minPrice,
+        maxPrice
+      } = params;
+      
       // Build query string
-      const params = new URLSearchParams();
-      if (keyword) params.append('keyword', keyword);
-      if (page) params.append('page', page);
-      if (category && category !== 'all') params.append('category', category);
-      if (sort) params.append('sort', sort);
+      const queryParams = new URLSearchParams();
+      
+      // Only append params with actual values
+      if (keyword) queryParams.append('keyword', keyword);
+      queryParams.append('page', page.toString());
+      if (category && category !== 'all') queryParams.append('category', category);
+      if (sort) queryParams.append('sort', sort);
+      if (minPrice !== undefined && minPrice !== null && minPrice !== '') 
+        queryParams.append('minPrice', minPrice.toString());
+      if (maxPrice !== undefined && maxPrice !== null && maxPrice !== '') 
+        queryParams.append('maxPrice', maxPrice.toString());
 
-      const queryString = params.toString();
+      const queryString = queryParams.toString();
       const url = queryString ? `/products?${queryString}` : '/products';
 
+      console.log('Fetching products with URL:', url);
       const { data } = await api.get(url);
       return data;
     } catch (error) {
