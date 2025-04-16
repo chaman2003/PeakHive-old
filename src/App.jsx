@@ -8,6 +8,7 @@ import './App.css';
 import Layout from './components/layout/Layout';
 import routes from './routes';
 import { loadCartFromDatabase } from './slices/cartSlice';
+import Chatbot from './components/Chatbot';
 
 function App() {
   const dispatch = useDispatch();
@@ -44,6 +45,7 @@ function App() {
         draggable
         pauseOnHover
       />
+      <Chatbot />
     </Router>
   );
 }

@@ -1040,12 +1040,26 @@ function Orders() {
 
       {/* Order Detail Modals */}
       {filteredOrders.map((order) => (
-        <div className="modal fade" id={`orderDetails-${order._id}`} key={`modal-${order._id}`} tabIndex="-1" aria-hidden="true">
+        <div 
+          className="modal fade" 
+          id={`orderDetails-${order._id}`} 
+          key={`modal-${order._id}`} 
+          tabIndex="-1"
+          role="dialog"
+          aria-labelledby={`orderDetailsLabel-${order._id}`}
+        >
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Order Details - {order.orderId || order._id}</h5>
-                <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 className="modal-title" id={`orderDetailsLabel-${order._id}`}>
+                  Order Details - {order.orderId || order._id}
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  data-bs-dismiss="modal" 
+                  aria-label="Close"
+                ></button>
               </div>
               <div className="modal-body">
                 <div className="row mb-4">
@@ -1215,12 +1229,26 @@ function Orders() {
 
       {/* Invoice Modals */}
       {filteredOrders.filter(order => order.isPaid).map((order) => (
-        <div className="modal fade" id={`invoice-${order._id}`} key={`invoice-${order._id}`} tabIndex="-1" aria-hidden="true">
+        <div 
+          className="modal fade" 
+          id={`invoice-${order._id}`} 
+          key={`invoice-${order._id}`} 
+          tabIndex="-1"
+          role="dialog"
+          aria-labelledby={`invoiceLabel-${order._id}`}
+        >
           <div className="modal-dialog modal-lg">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Invoice - {order.orderId || order._id}</h5>
-                <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 className="modal-title" id={`invoiceLabel-${order._id}`}>
+                  Invoice - {order.orderId || order._id}
+                </h5>
+                <button 
+                  type="button" 
+                  className="btn-close" 
+                  data-bs-dismiss="modal" 
+                  aria-label="Close"
+                ></button>
               </div>
               <div className="modal-body">
                 <div className="invoice-container p-4">
@@ -1545,6 +1573,14 @@ function Orders() {
           .invoice-container {
             padding: 30px !important;
           }
+          /* Ensure logo is visible in print */
+          .navbar-brand,
+          .navbar-brand img {
+            display: block !important;
+            visibility: visible !important;
+            position: relative !important;
+            margin-bottom: 20px !important;
+          }
         }
         `}
       </style>
@@ -1556,8 +1592,15 @@ function Orders() {
             // Fix for modal focus management
             const modals = document.querySelectorAll('.modal');
             modals.forEach(modal => {
+              modal.addEventListener('show.bs.modal', function() {
+                // Remove aria-hidden when modal is shown
+                this.removeAttribute('aria-hidden');
+              });
+              
               modal.addEventListener('hidden.bs.modal', function() {
-                // Move focus to body when modal is closed to prevent focus issues
+                // Add aria-hidden when modal is hidden
+                this.setAttribute('aria-hidden', 'true');
+                // Move focus to body when modal is closed
                 document.body.focus();
               });
             });
